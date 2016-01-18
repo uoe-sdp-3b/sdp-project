@@ -3,14 +3,6 @@
 
 void setup() {
   SDPsetup();
-  Serial.setTimeout(100);
-  Serial.write("+++");
-  Serial.write("ATCN20");
-  Serial.write("ATAC");
-  Serial.write("ATID0003");
-  Serial.write("ATAC");
-  Serial.write("ATWR");
-  Serial.write("ATDN");
 
   Serial.write("Complete");
 }
