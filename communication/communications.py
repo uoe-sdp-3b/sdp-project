@@ -86,5 +86,25 @@ class CommsToArduino(object):
         else:
             print("Not connected to Arduino.")
 
+# plan on keeping this as a skeleton used purely for communication
+class RobotComms(CommsToArduino):
+  def __init__(self, port):
+    super(RobotComms, self).__init__(port)
+
+  def forward(self, speed):
+    print "forward: " + speed
+
+  def backward(self, speed):
+    pass
+
+  def left(self, speed):
+    pass
+
+  def right(self, speed):
+    pass
+
+  def grab(self):
+    pass
+
 if __name__ == "__main__":
   print("This class is not designed to be run by hand")

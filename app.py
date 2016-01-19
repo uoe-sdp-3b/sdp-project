@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
-from communication.communications import CommsToArduino
+from communication.communications import RobotComms
 
 # tmp imports
 import time
@@ -7,12 +7,8 @@ import time
 
 # parse args
 def main():
-  comms = CommsToArduino()
+  comms = RobotComms("/dev/ttyACM0")
   comms.connect()
-
-  while True:
-    input = raw_input()
-    comms.write(input, "")
 
 if __name__ == "__main__":
   main()
