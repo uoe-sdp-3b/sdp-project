@@ -1,6 +1,7 @@
 #include "SDPArduino.h"
 #include <Wire.h>
 #include <stdlib.h>
+#define STOP 0
 
 void setup(){
   
@@ -17,100 +18,119 @@ void setup(){
    helloWorld();
 }
 
+
+int getNumFromChar(char c){
+  int r = (int)c - (int)'0';
+  return r;
+}
+
 int getSig(String c){
-  int res;
-  char letter[2];
-  letter[0] = c[0];
-  letter[1] = '\0';
-  res = atoi(letter);
-  return res;
+  int r = getNumFromChar(c[0]);
+  return r;
 }
 
 int getOpcode(String c){
-  int res;
-  char letter[2];
-  letter[0] = c[1];
-  letter[1] = '\0';
-  res = atoi(letter);
-  return res;
+  int r = getNumFromChar(c[1]);
+  return r;
 }
 
-int getArg1(String c){
-  int res;
-  char letter[2];
-  letter[0] = c[2];
-  letter[1] = '\0';
-  res = atoi(letter);
-  return res;
-}
+int getArg(String c){
+  int r1 = getNumFromChar(c[2]);
+  int r2 = getNumFromChar(c[3]);
+  int r3 = getNumFromChar(c[4]);
+  return ((r1*100)+(r2*10)+r3);
+}int r = (int)c - (int)'0';
 
-
-int getArg2(String c){
-  int res;
+int check_checksum(String c, int opcode, int arg){
+  int checksum = getNumFromChar(c[5]);
+  int checksum_recalculated = (opcode + arg) % 10;
   
-  char letter[2];
-  letter[0] = c[3];
-  letter[1] = '\0';
-  int a = atoi(letter)*100;
-  res = a;
-  
-  
-  letter[0] = c[4];
-  letter[1] = '\0';
-  int b = atoi(letter)*10;
-  res = res + b;  
-  
-  
-  letter[0] = c[5];
-  letter[1] = '\0';
-  int d = atoi(letter);
-  res = res + d;
-  
-  return res;
-}
-
-int check_checksum(String c){
-  int res = 1;
-  int w,x,y,z;
-  
-  char letter1[2];
-  char letter2[2];
-  char letter3[2];
-  char letter4[2];
-  char letter5[2];
-  
-  letter1[1] = '\0';
-  letter2[1] = '\0';
-  letter3[1] = '\0';
-  letter4[1] = '\0';
-  letter5[1] = '\0';
-  
-  letter1[0] = c[2];
-  w = atoi(letter1);
-   
-  letter1[0] = c[3];
-  x = atoi(letter1);
-   
-  letter2[0] = c[4];
-  y = atoi(letter2);
-   
-  letter3[0] = c[5];
-  z = atoi(letter3);
-  
-//  char c;
-//  (int)c - (int)'0'
-  
-  letter5[0] = c[6];
-  int test2 = atoi(letter5);
-  
-  
-  int test = (w+x+y+z)%10;
-  if(test2 != test){
-    res = 0;
+  if(checksum == checksum_recalculated){
+    return 1;
   }
-  return res;
+  else {
+    return 0;
+  }
   
 }
+
+
+
+
+void moveRobotForward(int power){
+
+  //motorStop(0); // this might be useful, in the case the robot is already in a turning move
+  
+  motorForward(1,power);
+  motorForward(2,power);
+
+  // need to create a reply message to let the PC acknowledge the accepted request and execution
+  Serial.println("Robot forward");
+
+}
+
+void moveRobotBackward(int power){
+
+  //motorStop(0); // again might be useful if the robot is in a turning move
+
+  // stop the motors first incase they are moving forward (to prevent mechinical failure)
+  motorStop(1); 
+  motorStop(2);
+  
+  // set motors to move backwards
+  motorBackward(1, power);
+  motorBackward(2,power);
+
+  // send reply message
+  Serial.println("Robot back");
+  
+}
+
+void rotateRobotLeft(int power){
+
+  motorAllStop(); // use this for now, can change later on
+
+  // set motors for left rotation
+  motorForward(2,power);
+  motorForward(0,power);
+
+  // send reply message 
+  Serial.println("Robot left");
+  
+}
+
+void rotateRobotRight(int power){
+
+  motorAllStop(); // use this for now, can change later
+
+  // set motors for right rotation
+  motorForward(1, power);
+  motorBackward(0, power);
+
+  // send reply message
+  Serial.println("Robot right");
+  
+}
+
+void stopRobot(){
+
+  motorAllStop();
+
+  // send reply message
+  Serial.println("Robot stopped");
+  
+}
+
+void robotGrab(){
+  
+  motorForward(5, 100);
+  delay(500);
+  motorAllStop();
+  Serial.println("Robot Grab");
+  
+  
+}
+
 
 
 void loop(){
@@ -122,42 +142,54 @@ void loop(){
     String c = Serial.readString();
     
     // inital test to see if message is recieved (delete afterwards)
+    // 
     Serial.println(c);
 
-    // if checksum is correct continue decoding message and execute
-    if(check_checksum){
 
+      // need to check if signuture is our teams first!
+      // avoids unessacary computation on the arduino if it is not a message for out team.
       int sig = getSig(c);
-      int opcode = getOpcode(c);
-      int arg1 = getArg1(c);
-      int arg2 = getArg2(c);
+      if(sig != 0){ return; }
+
+        int opcode = getOpcode(c);
+        int arg = getArg(c);
+        int check = check_checksum(c, opcode, arg);
+        
+        // if checksum is correct continue decoding message and execute
+        if(check == 1){
       
       
-      switch (opcode){
+          switch (opcode){
+
+            case STOP:  stopRobot();
+            break;
+          
+            case 1:  moveRobotForward(arg);
+            break;
         
-        case 0:  motorForward(arg1,arg2);
-        break;
+            case 2:  moveRobotBackward(arg);
+            break;
         
-        case 1:  motorBackward(arg1,arg2);
-        break;
-        
-        case 2:  motorStop(arg1);
-        break;
-        
-        case 3:  motorAllStop();
-        break;
-        
-        default: Serial.println("Error in code this should not happen");
-        break;
-        
-      }  
+            case 3:  rotateRobotLeft(arg);
+            break;
+
+            case 4:  rotateRobotRight(arg);
+            break;
             
-    }
-    
-  }
-
-
-
-  
-}
+            case 5: robotGrab();
+            break;
+        
+            default: Serial.println("ERR");
+            break;
+        
+          } // switch  
+      } // if checksum
+      else{
+        // checksum is not correct, sig is therefore message was corrupted
+        // reply: incorrect message (re-send)
+        Serial.println("CORR");
+      }
+    // } // if sig == 0 (if this fails, message is not for out team)
+  } // if serial.avalaible 
+} // loop body
 
