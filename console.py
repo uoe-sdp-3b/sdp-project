@@ -7,18 +7,25 @@ class Console():
     self.robot = RobotComms(port)
     self.ui = NcursesUI(self.read, self.write)
 
-  def start():
-    robot.connect()
-    ui.start()
+  def start(self):
+    self.robot.connect()
+    self.ui.start()
 
-  def read():
-    return "Hello"
+  def read(self):
+    x = self.robot.comn.readline()
+    if x.strip() is "":
+      return None
+    return x
 
-  def write(message):
-    pass
+  def write(self, message):
+    args = message.split(" ")
+    f = getattr(self.robot, args[0], None)
+
+    if f and len(args) > 1:
+      f(*args[1:])
 
 def main():
-  console = Console("/dev/ttyACM0")
+  console = Console("/dev/tty.usbmodem000001")
   console.start()
 
 
