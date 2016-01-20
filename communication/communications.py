@@ -50,7 +50,9 @@ class CommsToArduino(object):
         received = None
         checksum = self.create_checksum(arg, opcode)
 
-        while received != "DONE\r\n":
+        # If message start with robotGrab
+        # The robot executed the action
+        while received[:5] != "Robot":
           opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
           self.comn.write(opcode_string)
           sleep(0.2) # Possibly unnecessary
@@ -63,9 +65,10 @@ class CommsToArduino(object):
           
           # Command did not get recognized
           if received == "Wat?\r\n":
-            print "WAT WAT?", opcode_string
-
-        print "  DONE"
+            print "WAT WAT? Arduino did not understand its input", opcode_string
+        
+        # Print robot executed action
+        print received
         print
         self.ready = True
 
