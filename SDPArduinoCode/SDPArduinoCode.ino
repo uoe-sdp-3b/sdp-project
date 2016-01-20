@@ -7,6 +7,7 @@
 #define FRONT_RIGHT MOTOR 2
 #define ACTION_MOTOR 3
 
+// Inbound message definitions
 #define STOP 0
 #define FORWARD 1
 #define BACKWARD 2
@@ -15,7 +16,13 @@
 #define KICK 5 
 #define GRAB 6
 
+// Outbound message definitions
+#define DONE "Robot ignores"
+#define CHECKSUM_FAILED "Checksum failed"
+#define UNRECOGNIZED_COMMAND "Wat?"
+
 int  lastSeqNo;
+bool done;
 
 void setup(){
   
@@ -38,9 +45,15 @@ void setup(){
 bool ignore(int seqNo)
 {
   if (seqNo == lastSeqNo) {
+    
+    // !! THIS CHECK MIGHT BE REDUNDANT AND NEED REMOVING
+    if (done) {
+      Serial.println(DONE);
+    }
     return true;
   } else {
     lastSeqNo = seqNo;
+    done = false;
     return false;
   }
 }
@@ -157,7 +170,7 @@ void robotKick(int power){
   motorBackward(ACTION_MOTOR,power);
 
   // send reply message
-  Serial.println("Kick");
+  Serial.println("Robot kick");
   
 }
 
@@ -167,7 +180,7 @@ void robotGrab(int power){
   motorForward(ACTION_MOTOR,power);
 
   // send reply message
-  Serial.println("Grab");
+  Serial.println("Robot grab");
   
 }
 
@@ -227,16 +240,18 @@ void loop(){
             case GRAB: robotGrab(arg);
             break;
         
-            default: Serial.println("ERR");
+            default: Serial.println(UNRECOGNIZED_COMMAND);
             break;
         
-          } // switch  
+          } // switch 
+          done = true;
       } // if checksum
       else{
         // checksum is not correct, sig is therefore message was corrupted
         // reply: incorrect message (re-send)
-        Serial.println("CORR");
+        Serial.println(CHECKSUM_FAILED);
       }
+      
     // } // if sig == 0 (if this fails, message is not for out team)
   } // if serial.avalaible 
 } // loop body
