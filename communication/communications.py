@@ -51,7 +51,7 @@ class CommsToArduino(object):
         checksum = self.create_checksum(arg, opcode)
 
         while received != "DONE\r\n":
-          opcode_string = "%d%d%d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
+          opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
           self.comn.write(opcode_string)
           sleep(0.2)
           received = self.comn.readline()
