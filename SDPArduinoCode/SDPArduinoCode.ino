@@ -15,6 +15,8 @@
 #define KICK 5 
 #define GRAB 6
 
+int  lastSeqNo;
+
 void setup(){
   
   SDPsetup();
@@ -30,6 +32,19 @@ void setup(){
    helloWorld();
 }
 
+// Returns true if the command should be ignored (duplicate command)
+// Origin of idea:
+// https://bitbucket.org/angel-ignatov/sdp14-15-group-15/src/150da3baeb2045b83add95c70cfca494873c4180/arduino/arduino.ino?at=master&fileviewer=file-view-default
+bool ignore(int seqNo)
+{
+  if (seqNo == lastSeqNo) {
+    return true;
+  } else {
+    lastSeqNo = seqNo;
+    return false;
+  }
+}
+
 
 int getNumFromChar(char c){
   int r = (int)c - (int)'0';
@@ -38,6 +53,11 @@ int getNumFromChar(char c){
 
 int getSig(String c){
   int r = getNumFromChar(c[0]);
+  return r;
+}
+
+int getSeqNo(String c){
+  int r = getNumFromChar(c[6]);
   return r;
 }
 
@@ -170,7 +190,11 @@ void loop(){
       // need to check if signuture is our teams first!
       // avoids unessacary computation on the arduino if it is not a message for out team.
       int sig = getSig(c);
-      if(sig != 0){ return; }
+      int seqNo = getSeqNo(c);
+      
+      // Quits if sig belongs to other teams
+      // OR if command is redundant (i.e. already executed)
+      if(sig != 0 || ignore(seqNo)){ return; }
 
         int opcode = getOpcode(c);
         int arg = getArg(c);
