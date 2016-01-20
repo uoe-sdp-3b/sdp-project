@@ -17,7 +17,8 @@ class CommsToArduino(object):
         self.rate = rate
         self.timeout = timeout
         self.connect()
-
+    
+    seqNo = False
     ready = True
 
     # this function establishes the connection between the devices
@@ -40,7 +41,7 @@ class CommsToArduino(object):
         
         return (arg + opcode) % 10
 
-    def _write(self, sig, opcode, arg):
+    def _write(self, sig, opcode, arg, seqNo):
         """
         Repeatedly sends the opcode to the robot until an OK is received.
         Then waits until DONE, and sets "ready" true.
@@ -50,7 +51,7 @@ class CommsToArduino(object):
         checksum = self.create_checksum(arg, opcode)
 
         while received != "DONE\r\n":
-          opcode_string = "%d%d%d%d\r" % (sig, opcode, arg, checksum)
+          opcode_string = "%d%d%d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
           self.comn.write(opcode_string)
           sleep(0.2)
           received = self.comn.readline()
@@ -58,6 +59,7 @@ class CommsToArduino(object):
           # Checksum failure
           if received == "Checksum failed\r\n":
             print "Checksum Failed", opcode_string
+            seqNo = not seqNo
           
           # Command did not get recognized
           if received == "Wat?\r\n":
@@ -67,15 +69,16 @@ class CommsToArduino(object):
         print
         self.ready = True
 
-    def write(self, opcode, arg):
+    def write(self, sig, opcode, arg):
         """
         Public interface for sending opcodes to the robot
         """
 
         if self.isConnected:
             self.ready = False
-
-            thread = Thread(target = self._write, args = (sig, opcode, arg))
+            self.seqNo = not self.seqNo
+            
+            thread = Thread(target = self._write, args = (sig, opcode, arg, self.seqNo))
             thread.start()
         else:
             print("Not connected to Arduino.")
