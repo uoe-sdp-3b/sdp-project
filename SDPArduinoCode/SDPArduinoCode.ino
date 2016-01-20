@@ -1,12 +1,24 @@
 #include "SDPArduino.h"
 #include <Wire.h>
 #include <stdlib.h>
+
+#define TURNING_MOTOR 0
+#define FRONT_LEFT_MOTOR 1
+#define FRONT_RIGHT MOTOR 2
+#define ACTION_MOTOR 3
+
 #define STOP 0
+#define FORWARD 1
+#define BACKWARD 2
+#define LEFT 3
+#define RIGHT 4
+#define KICK 5 
+#define GRAB 6
 
 void setup(){
   
   SDPsetup();
-  Serial.setTimeout(100); // time out for accepting a string
+  Serial.setTimeout(1000); // time out for accepting a string
 
   // setup communication channel to our designated group channel = 0x20
 //  Serial.write("+++");
@@ -39,7 +51,7 @@ int getArg(String c){
   int r2 = getNumFromChar(c[3]);
   int r3 = getNumFromChar(c[4]);
   return ((r1*100)+(r2*10)+r3);
-}int r = (int)c - (int)'0';
+}
 
 int check_checksum(String c, int opcode, int arg){
   int checksum = getNumFromChar(c[5]);
@@ -55,14 +67,21 @@ int check_checksum(String c, int opcode, int arg){
 }
 
 
+void stopRobot(){
 
+  motorAllStop();
+
+  // send reply message
+  Serial.println("Robot stopped");
+  
+}
 
 void moveRobotForward(int power){
 
   //motorStop(0); // this might be useful, in the case the robot is already in a turning move
   
-  motorForward(1,power);
-  motorForward(2,power);
+  motorForward(FRONT_LEFT_MOTOR,power);
+  motorForward(FRONT_RIGHT_MOTOR,power);
 
   // need to create a reply message to let the PC acknowledge the accepted request and execution
   Serial.println("Robot forward");
@@ -74,12 +93,12 @@ void moveRobotBackward(int power){
   //motorStop(0); // again might be useful if the robot is in a turning move
 
   // stop the motors first incase they are moving forward (to prevent mechinical failure)
-  motorStop(1); 
-  motorStop(2);
+  motorStop(FRONT_LEFT_MOTOR); 
+  motorStop(FRONT_RIGHT_MOTOR);
   
   // set motors to move backwards
-  motorBackward(1, power);
-  motorBackward(2,power);
+  motorBackward(FRONT_LEFT_MOTOR, power);
+  motorBackward(FRONT_RIGHT_MOTOR,power);
 
   // send reply message
   Serial.println("Robot back");
@@ -91,8 +110,8 @@ void rotateRobotLeft(int power){
   motorAllStop(); // use this for now, can change later on
 
   // set motors for left rotation
-  motorForward(2,power);
-  motorForward(0,power);
+  motorForward(FRONT_RIGHT_MOTOR,power);
+  motorForward(TURNING_MOTOR,power);
 
   // send reply message 
   Serial.println("Robot left");
@@ -104,32 +123,35 @@ void rotateRobotRight(int power){
   motorAllStop(); // use this for now, can change later
 
   // set motors for right rotation
-  motorForward(1, power);
-  motorBackward(0, power);
+  motorForward(FRONT_LEFT_MOTOR, power);
+  motorBackward(TURNING_MOTOR, power);
 
   // send reply message
   Serial.println("Robot right");
   
 }
 
-void stopRobot(){
+void robotKick(int power){
 
-  motorAllStop();
+  // move action motor backward
+  motorBackward(ACTION_MOTOR,power);
 
   // send reply message
-  Serial.println("Robot stopped");
+  Serial.println("Kick");
   
 }
 
-void robotGrab(){
-  
-  motorForward(5, 100);
-  delay(500);
-  motorAllStop();
-  Serial.println("Robot Grab");
-  
+void robotGrab(int power){
+
+  // move action motor forward
+  motorForward(ACTION_MOTOR,power);
+
+  // send reply message
+  Serial.println("Grab");
   
 }
+
+
 
 
 
@@ -142,8 +164,7 @@ void loop(){
     String c = Serial.readString();
     
     // inital test to see if message is recieved (delete afterwards)
-    // 
-    Serial.println(c);
+    // Serial.println(c);
 
 
       // need to check if signuture is our teams first!
@@ -164,19 +185,22 @@ void loop(){
             case STOP:  stopRobot();
             break;
           
-            case 1:  moveRobotForward(arg);
+            case FORWARD:  moveRobotForward(arg);
             break;
         
-            case 2:  moveRobotBackward(arg);
+            case BACKWARD:  moveRobotBackward(arg);
             break;
         
-            case 3:  rotateRobotLeft(arg);
+            case LEFT:  rotateRobotLeft(arg);
             break;
 
-            case 4:  rotateRobotRight(arg);
+            case RIGHT:  rotateRobotRight(arg);
             break;
             
-            case 5: robotGrab();
+            case KICK: robotKick(arg);
+            break;
+
+            case GRAB: robotGrab(arg);
             break;
         
             default: Serial.println("ERR");
