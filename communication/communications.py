@@ -18,7 +18,6 @@ class CommsToArduino(object):
         self.timeout = timeout
         self.connect()
 
-    seqNo = False
     ready = True
 
     # this function establishes the connection between the devices
@@ -27,61 +26,56 @@ class CommsToArduino(object):
         if self.isConnected is False and self.comn is None:
             try:
                 self.comn = Serial(port=self.port,
-                                          baudrate=self.rate,
-                                          timeout=self.timeout)
+                                   baudrate=self.rate,
+                                   timeout=self.timeout)
                 self.isConnected = True
             except OSError as ex:
                 print("Cannot connect to Arduino.")
                 print(ex.strerror)
                 
-    def create_checksum(self, args):
+    def create_checksum(self, arg, opcode):
         """
-        Creates the checksum that is used to verify the command.
+        Creates the checksum that is used to verify the opcode.
         """
         
-        sum = 0
-        for arg in args:
-            sum += abs(arg)
-        return sum % 10
+        return (arg + opcode) % 10
 
-    def _write(self, command, seqNo, args):
+    def _write(self, sig, opcode, arg):
         """
-        Repeatedly sends the command to the robot until an OK is received.
+        Repeatedly sends the opcode to the robot until an OK is received.
         Then waits until DONE, and sets "ready" true.
         """
 
         received = None
-
-        string_args = ' '.join(['%d' % x for x in args])
-        checksum = self.create_checksum(args)
+        checksum = self.create_checksum(arg, opcode)
 
         while received != "DONE\r\n":
-          command_string = "%s %d %s %d\r" % (command, seqNo, string_args, checksum)
-          self.comn.write(command_string)
+          opcode_string = "%d%d%d%d\r" % (sig, opcode, arg, checksum)
+          self.comn.write(opcode_string)
           sleep(0.2)
           received = self.comn.readline()
           
+          # Checksum failure
           if received == "Checksum failed\r\n":
-            print "Checksum Failed", command_string
-            seqNo = not seqNo
-
+            print "Checksum Failed", opcode_string
+          
+          # Command did not get recognized
           if received == "Wat?\r\n":
-            print "WAT WAT?", command_string
+            print "WAT WAT?", opcode_string
 
         print "  DONE"
         print
         self.ready = True
 
-    def write(self, command, args):
+    def write(self, opcode, arg):
         """
-        Public interface for sending commands to the robot
+        Public interface for sending opcodes to the robot
         """
 
         if self.isConnected:
             self.ready = False
-            self.seqNo = not self.seqNo
 
-            thread = Thread(target = self._write, args = (command, self.seqNo, args))
+            thread = Thread(target = self._write, args = (sig, opcode, arg))
             thread.start()
         else:
             print("Not connected to Arduino.")
