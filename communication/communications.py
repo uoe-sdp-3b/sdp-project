@@ -53,7 +53,7 @@ class CommsToArduino(object):
         while received != "DONE\r\n":
           opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
           self.comn.write(opcode_string)
-          sleep(0.2)
+          sleep(0.2) # Possibly unnecessary
           received = self.comn.readline()
           
           # Checksum failure
@@ -90,6 +90,7 @@ class RobotComms(CommsToArduino):
 
   def forward(self, speed):
     #self.write(sig, opcode, arg)
+    #011001
     print "forward: " + speed
 
   def backward(self, speed):
