@@ -89,18 +89,23 @@ class RobotComms(CommsToArduino):
     super(RobotComms, self).__init__(port)
 
   def forward(self, speed):
+    #self.write(sig, opcode, arg)
     print "forward: " + speed
 
   def backward(self, speed):
+    #self.write(sig, opcode, arg)
     pass
 
   def left(self, speed):
+    #self.write(sig, opcode, arg)
     pass
 
   def right(self, speed):
+    #self.write(sig, opcode, arg)
     pass
 
   def grab(self):
+    #self.write(sig, opcode, arg)
     pass
 
 if __name__ == "__main__":
