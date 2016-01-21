@@ -4,7 +4,7 @@
 
 #define TURNING_MOTOR 0
 #define FRONT_LEFT_MOTOR 1
-#define FRONT_RIGHT MOTOR 2
+#define FRONT_RIGHT_MOTOR 2
 #define ACTION_MOTOR 3
 
 // Inbound message definitions
@@ -196,7 +196,7 @@ void loop(){
     // save message sent from PC to STRING c.
     String c = Serial.readString();
     
-    if(strlen(c)< 7){ 
+    if(c.length()< 7){ 
       Serial.println("Robot input too short");
       return;
     }
