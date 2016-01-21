@@ -42,7 +42,7 @@ void setup(){
 //  Serial.write("+++");
 //  Serial.write("ATCN20");
 //  Serial.write("ATAC");
-//  Serial.write(	"ATDN");
+//  Serial.write("ATDN");
 
   // 1. inital test to see if message is recieved to computer stating "hello world"
    helloWorld();
@@ -237,10 +237,16 @@ int getFrequency(String c){
   return f;
 }
 
-void storeFileInRegister(int freq){
+void storeFileInRegister(String file, long freq){
   int register_address = 69; 
-
-    
+  
+  // Change this if 1st or 2nd bit is relevant, etc.
+  for (int i = 1; i <= 250; i++) {
+      Wire.beginTransmission(register_address); // open I2C communication to intended receiver
+      Wire.setclock(freq);
+      Wire.write( (byte) (file.charAt(i)) );   // sends the string (which is the file contents)
+      Wire.endTransmission(); // end I2C communcation.
+  }  
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
