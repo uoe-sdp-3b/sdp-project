@@ -51,11 +51,7 @@ class NcursesUI(object):
 
         self.__drawUI()
 
-        # Get the nick if not given
-        while True:
-          self.nick = CursesInputDialog(self.screen, "There is a troll: ").show()
-          if self.nick != "use axe on troll":
-            break;
+        self.nick = ""
 
         self.sender = CursesSendThread(self, self.write_callback)
         self.sender.start()
@@ -126,7 +122,7 @@ class NcursesUI(object):
         self.chatWindow.addstr(height-1, len(prefix), message)
 
         # Move the cursor back to the chat input window
-        self.textboxWindow.move(0, 0)
+        # self.textboxWindow.move(0, 0)
 
         self.chatWindow.refresh()
         self.textboxWindow.refresh()
