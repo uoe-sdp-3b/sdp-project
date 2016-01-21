@@ -88,36 +88,36 @@ class CommsToArduino(object):
 
 # plan on keeping this as a skeleton used purely for communication
 class RobotComms(CommsToArduino):
+  TEAM = 0
+  
+  # Operation Codes (OpCodes)
+  STOP = 0
+  FORWARD = 1
+  BACKWARD = 2
+  LEFT = 3
+  RIGHT = 4
+  GRAB = 5
+  
   def __init__(self, port):
     super(RobotComms, self).__init__(port)
 
   def stop(self):
-    #self.write(sig, opcode, arg)
-    #011001
-    #print "forward: " + speed
-    self.write(0, 0, 0)
+    self.write(TEAM, STOP, 0)
 
   def forward(self, speed):
-    #self.write(sig, opcode, arg)
-    #011001
-    #print "forward: " + speed
-    self.write(0, 1, speed)
+    self.write(TEAM, FORWARD, speed)
 
   def backward(self, speed):
-    #self.write(sig, opcode, arg)
-    self.write(0, 2, speed)
+    self.write(TEAM, BACKWARD, speed)
 
   def left(self, speed):
-    #self.write(sig, opcode, arg)
-    self.write(0, 3, speed)
+    self.write(TEAM, LEFT, speed)
 
   def right(self, speed):
-    #self.write(sig, opcode, arg)
-    self.write(0, 4, speed)
+    self.write(TEAM, RIGHT, speed)
 
   def grab(self, speed):
-    #self.write(sig, opcode, arg)
-    self.write(0, 5, speed)
+    self.write(TEAM, GRAB, speed)
 
 if __name__ == "__main__":
   print("This class is not designed to be run by hand")
