@@ -61,34 +61,15 @@ class CommsToArduino(object):
 
     def _write(self, sig, opcode, arg, seqNo):
         """
-        Repeatedly sends the opcode to the robot until an OK is received.
-        Then waits until DONE, and sets "ready" true.
+        Sends the code to the Arduino
         """
-
-        received = None
         checksum = self.create_checksum(arg, opcode)
+        opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
+        self.to_robot(opcode_string)
+        return
 
-        # If message start with robotGrab
-        # The robot executed the action
-        while received[:5] != "Robot":
-          opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
-          self.comn.write(opcode_string)
-          sleep(0.2) # Possibly unnecessary
-          received = self.comn.readline()
-          
-          # Checksum failure
-          if received == "Checksum failed\r\n":
-            print "Checksum Failed", opcode_string
-            seqNo = not seqNo
-          
-          # Command did not get recognized
-          if received == "Wat?\r\n":
-            print "WAT WAT? Arduino did not understand its input", opcode_string
-        
-        # Print robot executed action
-        print received
-        print
-        self.ready = True
+    def to_robot(self, message):
+        self.comn.write(message)
 
     def write(self, sig, opcode, arg):
         """
