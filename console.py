@@ -25,7 +25,7 @@ class Console():
       f(*args[1:])
 
 def main():
-  console = Console("/dev/tty.usbmodem000001")
+  console = Console("/dev/ttyACM0")
   console.start()
 
 
