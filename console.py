@@ -12,10 +12,10 @@ class Console():
     self.ui.start()
 
   def read(self):
-    x = self.robot.comn.readline()
-    if x.strip() is "":
-      return None
-    return x
+    if not self.robot.queue.empty():
+      message = self.robot.queue.get()
+      return message.strip()
+    return None
 
   def write(self, message):
     args = message.split(" ")
@@ -23,9 +23,17 @@ class Console():
 
     if f and len(args) > 1:
       f(*args[1:])
+    elif f:
+      f()
 
 def main():
-  console = Console("/dev/ttyACM0")
+  import argparse
+  parser = argparse.ArgumentParser(description="console for robot")
+  parser.add_argument("-p", default="/dev/ttyACM0")
+
+  args = parser.parse_args()
+
+  console = Console(args.p)
   console.start()
 
 
