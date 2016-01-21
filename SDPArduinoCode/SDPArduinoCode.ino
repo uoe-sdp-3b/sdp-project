@@ -196,6 +196,11 @@ void loop(){
     // save message sent from PC to STRING c.
     String c = Serial.readString();
     
+    if(strlen(c)< 7){ 
+      Serial.println("Robot input too short");
+      return;
+    }
+    
     // inital test to see if message is recieved (delete afterwards)
     // Serial.println(c);
 
@@ -209,42 +214,42 @@ void loop(){
       // OR if command is redundant (i.e. already executed)
       if(sig != 0 || ignore(seqNo)){ return; }
 
-        int opcode = getOpcode(c);
-        int arg = getArg(c);
-        int check = check_checksum(c, opcode, arg);
-        
-        // if checksum is correct continue decoding message and execute
-        if(check == 1){
+      int opcode = getOpcode(c);
+      int arg = getArg(c);
+      int check = check_checksum(c, opcode, arg);
       
-      
-          switch (opcode){
+      // if checksum is correct continue decoding message and execute
+      if(check == 1){
+    
+    
+        switch (opcode){
 
-            case STOP:  stopRobot();
-            break;
+          case STOP:  stopRobot();
+          break;
+        
+          case FORWARD:  moveRobotForward(arg);
+          break;
+      
+          case BACKWARD:  moveRobotBackward(arg);
+          break;
+      
+          case LEFT:  rotateRobotLeft(arg);
+          break;
+
+          case RIGHT:  rotateRobotRight(arg);
+          break;
           
-            case FORWARD:  moveRobotForward(arg);
-            break;
-        
-            case BACKWARD:  moveRobotBackward(arg);
-            break;
-        
-            case LEFT:  rotateRobotLeft(arg);
-            break;
+          case KICK: robotKick(arg);
+          break;
 
-            case RIGHT:  rotateRobotRight(arg);
-            break;
-            
-            case KICK: robotKick(arg);
-            break;
-
-            case GRAB: robotGrab(arg);
-            break;
-        
-            default: Serial.println(UNRECOGNIZED_COMMAND);
-            break;
-        
-          } // switch 
-          done = true;
+          case GRAB: robotGrab(arg);
+          break;
+      
+          default: Serial.println(UNRECOGNIZED_COMMAND);
+          break;
+      
+        } // switch 
+        done = true;
       } // if checksum
       else{
         // checksum is not correct, sig is therefore message was corrupted
