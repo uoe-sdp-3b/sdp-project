@@ -115,9 +115,9 @@ class RobotComms(CommsToArduino):
     #self.write(sig, opcode, arg)
     self.write(0, 4, speed)
 
-  def grab(self):
+  def grab(self, speed):
     #self.write(sig, opcode, arg)
-    self.write(0, 5, 0)
+    self.write(0, 5, speed)
 
 if __name__ == "__main__":
   print("This class is not designed to be run by hand")
