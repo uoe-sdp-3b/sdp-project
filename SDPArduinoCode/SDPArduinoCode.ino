@@ -24,6 +24,15 @@
 int  lastSeqNo;
 bool done;
 
+// Encoder Board Variables
+#define ROTARY_SLAVE_ADDRESS 5
+#define ROTARY_COUNT 6
+#define PRINT_DELAY 200
+
+// Initial motor position is 0.
+int positions[ROTARY_COUNT] = {0};
+
+
 void setup(){
   
   SDPsetup();
@@ -33,7 +42,7 @@ void setup(){
 //  Serial.write("+++");
 //  Serial.write("ATCN20");
 //  Serial.write("ATAC");
-//  Serial.write("ATDN");
+//  Serial.write(	"ATDN");
 
   // 1. inital test to see if message is recieved to computer stating "hello world"
    helloWorld();
@@ -185,10 +194,62 @@ void robotGrab(int power){
 }
 
 
+void robotForwardDistance(int distance){
+  // will eventually use this function, and parameter ARG from input will represent how far to move forward
+  // rather than the power to move forward.
 
+  // need encoders working first!
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                              TESTING ENCODER BOARD READS                                             //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void updateMotorPositions() {
+  // Request motor position deltas from rotary slave board
+  Wire.requestFrom(ROTARY_SLAVE_ADDRESS, ROTARY_COUNT);
+  
+  // Update the recorded motor positions
+  for (int i = 0; i < ROTARY_COUNT; i++) {
+    positions[i] += (int8_t) Wire.read();  // Must cast to signed 8-bit type
+  }
+}
+
+void printMotorPositions() {
+  Serial.print("Motor positions: ");
+  for (int i = 0; i < ROTARY_COUNT; i++) {
+    Serial.print(positions[i]);
+    Serial.print(' ');
+  }
+  Serial.println();
+  delay(PRINT_DELAY);  // Delay to avoid flooding serial out
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                Milestone 1 communication functions                                     //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int getFrequency(String c){
+  int f = 100;
+
+  return f;
+}
+
+void storeFileInRegister(int freq){
+  int register_address = 69; 
+
+    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void loop(){
+
+  updateMotorPositions();
+  printMotorPositions();
 
   // if message is available on our frequency accept it.
   if(Serial.available() > 0){
@@ -201,10 +262,6 @@ void loop(){
       return;
     }
     
-    // inital test to see if message is recieved (delete afterwards)
-    // Serial.println(c);
-
-
       // need to check if signuture is our teams first!
       // avoids unessacary computation on the arduino if it is not a message for out team.
       int sig = getSig(c);
@@ -213,6 +270,18 @@ void loop(){
       // Quits if sig belongs to other teams
       // OR if command is redundant (i.e. already executed)
       if(sig != 0 || ignore(seqNo)){ return; }
+
+      // for accepting file
+      if(sig == 3){
+
+        // get frequency from file.
+        //int frequency = getFrequency(c);
+        
+        // storeStringInRegister(int frequency) 
+
+
+        
+      }
 
       int opcode = getOpcode(c);
       int arg = getArg(c);
