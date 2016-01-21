@@ -21,10 +21,13 @@ class Console():
     args = message.split(" ")
     f = getattr(self.robot, args[0], None)
 
-    if f and len(args) > 1:
-      f(*args[1:])
-    elif f:
-      f()
+    try:
+      if f and len(args) > 1:
+        f(*args[1:])
+      elif f:
+        f()
+    except TypeError as e:
+      self.robot.queue.put(str(e))
 
 def main():
   import argparse
