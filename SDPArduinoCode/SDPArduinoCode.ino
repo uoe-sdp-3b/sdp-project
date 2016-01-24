@@ -15,6 +15,7 @@
 #define RIGHT 4
 #define KICK 5 
 #define GRAB 6
+#define STORE 7
 
 // Outbound message definitions
 #define DONE "Robot ignores"
@@ -23,6 +24,8 @@
 
 int  lastSeqNo;
 bool done;
+
+bool bytes_to_store;
 
 // Encoder Board Variables
 #define ROTARY_SLAVE_ADDRESS 5
@@ -272,17 +275,14 @@ int getFrequency(String c){
   return f;
 }
 
-void storeFileInRegister(String file, long freq){
+void storeByte(byte one_byte){
   int register_address = 69; 
   
-  // Change this if 1st or 2nd bit is relevant, etc.
-  for (int i = 1; i <= 250; i++) {
-      Wire.beginTransmission(register_address); // open I2C communication to intended receiver
-      //Wire.setClock(freq);
-      Wire.write( (byte) (file.charAt(i)) );   // sends the string (which is the file contents)
-      // sleep 1/frequency
-      Wire.endTransmission(); // end I2C communcation.
-  }  
+  Wire.beginTransmission(register_address); // open I2C communication to intended receiver
+  Wire.write( one_byte );   // sends the string (which is the file contents)
+  Wire.endTransmission(); // end I2C communcation.
+  
+  bytes_to_store--;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +298,14 @@ void loop(){
     
     // save message sent from PC to STRING c.
     String c = Serial.readString();
+    
+    if (bytes_to_store > 0) {
+      byte buf[1];
+      c.getBytes(buf, 1);
+      storeByte((buf[0]);
+      return;
+    }
+    
     
     if(c.length()< 7){ 
       Serial.println("Robot input too short");
@@ -354,6 +362,9 @@ void loop(){
           break;
 
           case GRAB: robotGrab(arg);
+          break;
+          
+          case STORE: bytes_to_store = arg;
           break;
       
           default: Serial.println(UNRECOGNIZED_COMMAND);
