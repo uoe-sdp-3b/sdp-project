@@ -214,10 +214,6 @@ class NcursesUI(object):
                 self.__restart()
             elif pos == 2:
                 if self.connectionManager is None:
-                    CursesDialog(
-                        self.screen,
-                        "Chat authentication is not available until you are chatting with someone.",
-                        isBlocking=True).show()
                     return
 
                 question = CursesInputDialog(self.screen, "Question: ").show()
@@ -227,10 +223,7 @@ class NcursesUI(object):
                 self.connectionManager.getClient(
                     self.connectedNick).initiateSMP(question, answer)
             elif pos == 3:
-                CursesDialog(
-                    self.screen,
-                    "Read the docs at https://cryptully.readthedocs.org/en/latest/",
-                    isBlocking=True).show()
+                pass
             elif pos == 4:
                 # Move the cursor back to the chat input textbox
                 self.textboxWindow.move(0, 0)
