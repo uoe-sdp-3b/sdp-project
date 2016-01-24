@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 from serial import Serial
 from Queue import Queue
-import fileinput
-import readline
 from time import sleep
 from threading import Thread
 
@@ -20,20 +18,21 @@ GRAB = 6
 STORE = 7
 
 
-
 class CommsToArduino(object):
 
     queue = Queue()
     internal_queue = Queue()
     write_queue = Queue()
+
     # these should be hard-coded, the values should not change
-    def __init__(self, port="/dev/ttyACM0",
+    def __init__(self,
+                 port="/dev/ttyACM0",
                  rate=115200,
                  timeout=0,
                  connected=False):
         self.isConnected = connected
         self.port = port
-        self.comn = None # updated when we establish the connection
+        self.comn = None  # updated when we establish the connection
         self.rate = rate
         self.timeout = timeout
         self.connect()
@@ -91,79 +90,77 @@ class CommsToArduino(object):
         else:
             print("Not connected to Arduino.")
 
+
 # plan on keeping this as a skeleton used purely for communication
 class RobotComms(CommsToArduino):
-  _close = False
+    _close = False
 
-  def __init__(self, port):
-      self.write_thread = Thread(target = self.write_stream)
-      self.read_thread = Thread(target = self.read_stream)
-      self.read_thread.start()
-      self.write_thread.start()
-      super(RobotComms, self).__init__(port)
+    def __init__(self, port):
+        self.write_thread = Thread(target=self.write_stream)
+        self.read_thread = Thread(target=self.read_stream)
+        self.read_thread.start()
+        self.write_thread.start()
+        super(RobotComms, self).__init__(port)
 
-  def close(self):
-      self._close = True
-      self.comn.close()
-      self.queue.put("Robot Closed")
+    def close(self):
+        self._close = True
+        self.comn.close()
+        self.queue.put("Robot Closed")
 
+    def write_stream(self):
+        while True:
+            if self._close:
+                self.queue.put("Read Stream Closed")
+                break
+            if not self.write_queue.empty():
+                msg_dict = self.write_queue.get()
+                self._write(msg_dict["sig"], msg_dict["opcode"],
+                            msg_dict["arg"], msg_dict["seqNo"])
 
-  def write_stream(self):
-      while True:
-          if self._close:
-              self.queue.put("Read Stream Closed")
-              break
-          if not self.write_queue.empty():
-              msg_dict = self.write_queue.get()
-              self._write(
-                  msg_dict["sig"],
-                  msg_dict["opcode"],
-                  msg_dict["arg"],
-                  msg_dict["seqNo"]
-              )
+    def read_stream(self):
+        while True:
+            if self._close:
+                self.queue.put("Read Stream Closed")
+                break
+            sleep(0.5)
+            if self.comn and self.comn.is_open:
+                line = self.comn.readline()
+                if line.strip() != "":
+                    self.queue.put(line)
 
-  def read_stream(self):
-      while True:
-          if self._close:
-              self.queue.put("Read Stream Closed")
-              break
-          sleep(0.5)
-          if self.comn and self.comn.is_open:
-              line = self.comn.readline()
-              if line.strip() != "":
-                  self.queue.put(line)
+    def stop(self):
+        self.write(TEAM, STOP, 0)
 
-  def stop(self):
-      self.write(TEAM, STOP, 0)
+    def forward(self, speed):
+        self.write(TEAM, FORWARD, int(speed))
 
-  def forward(self, speed):
-      self.write(TEAM, FORWARD, int(speed))
+    def backward(self, speed):
+        self.write(TEAM, BACKWARD, int(speed))
 
-  def backward(self, speed):
-      self.write(TEAM, BACKWARD, int(speed))
+    def left(self, speed):
+        self.write(TEAM, LEFT, int(speed))
 
-  def left(self, speed):
-      self.write(TEAM, LEFT, int(speed))
+    def right(self, speed):
+        self.write(TEAM, RIGHT, int(speed))
 
-  def right(self, speed):
-      self.write(TEAM, RIGHT, int(speed))
+    def kick(self, speed):
+        self.write(TEAM, KICK, speed)
 
-  def kick(self, speed):
-      self.write(TEAM, KICK, speed)
+    def grab(self, speed):
+        self.write(TEAM, GRAB, speed)
 
-  def grab(self, speed):
-      self.write(TEAM, GRAB, speed)
-  
-  def store(self, file_path):
-      with open(file_path,'r') as f:
-          file_contents = f.read()
-          bytes_to_store = len(file_contents)
-          checksum = create_checksum(bytes_to_store, STORE)
-          init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store, checksum, 2)
-          self.to_robot(init_command)
-          for byte in file_contents:
-              sleep(100) # can be changed
-              self.to_robot(byte)
+    def store(self, file_path):
+        with open(file_path, 'r') as f:
+            file_contents = f.read()
+            bytes_to_store = len(file_contents)
+            checksum = self.create_checksum(bytes_to_store, STORE)
+            init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store,
+                                               checksum, 2)
+            self.to_robot(init_command)
+            for byte in file_contents:
+                sleep(100)  # can be changed
+                self.to_robot(byte)
+
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
