@@ -1,10 +1,6 @@
 #!/usr/bin/env python2.7
 from communication.communications import RobotComms
 
-# tmp imports
-import time
-
-
 # parse args
 def main():
   comms = RobotComms("/dev/ttyACM0")
