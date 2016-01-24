@@ -31,12 +31,14 @@ bool done;
 
 // Initial motor position is 0.
 int positions[ROTARY_COUNT] = {0};
+int UO[ROTARY_COUNT] = {0};
+int rotations[ROTARY_COUNT] = {0};
 
 
 void setup(){
   
   SDPsetup();
-  Serial.setTimeout(1000); // time out for accepting a string
+  Serial.setTimeout(100); // time out for accepting a string
 
   // setup communication channel to our designated group channel = 0x20
 //  Serial.write("+++");
@@ -122,8 +124,9 @@ void moveRobotForward(int power){
 
   //motorStop(0); // this might be useful, in the case the robot is already in a turning move
   
-  motorForward(FRONT_LEFT_MOTOR,power);
-  motorForward(FRONT_RIGHT_MOTOR,power);
+  motorBackward(FRONT_LEFT_MOTOR,power-2); // left motor is more powerful than right. This will make sure they have the same roatations +- 1 
+                                          // could be more acurate if we use 0-255 instead of 0-100 for power rating.
+  motorBackward(FRONT_RIGHT_MOTOR,power);
 
   // need to create a reply message to let the PC acknowledge the accepted request and execution
   Serial.println("Robot forward");
@@ -139,8 +142,8 @@ void moveRobotBackward(int power){
   motorStop(FRONT_RIGHT_MOTOR);
   
   // set motors to move backwards
-  motorBackward(FRONT_LEFT_MOTOR, power);
-  motorBackward(FRONT_RIGHT_MOTOR,power);
+  motorForward(FRONT_LEFT_MOTOR, power);
+  motorForward(FRONT_RIGHT_MOTOR,power);
 
   // send reply message
   Serial.println("Robot back");
@@ -152,8 +155,8 @@ void rotateRobotLeft(int power){
   motorAllStop(); // use this for now, can change later on
 
   // set motors for left rotation
-  motorForward(FRONT_RIGHT_MOTOR,power);
-  motorForward(TURNING_MOTOR,power);
+  motorBackward(FRONT_RIGHT_MOTOR,power);
+  motorBackward(TURNING_MOTOR,power);
 
   // send reply message 
   Serial.println("Robot left");
@@ -165,8 +168,8 @@ void rotateRobotRight(int power){
   motorAllStop(); // use this for now, can change later
 
   // set motors for right rotation
-  motorForward(FRONT_LEFT_MOTOR, power);
-  motorBackward(TURNING_MOTOR, power);
+  motorBackward(FRONT_LEFT_MOTOR, power);
+  motorForward(TURNING_MOTOR, power);
 
   // send reply message
   Serial.println("Robot right");
@@ -211,7 +214,27 @@ void updateMotorPositions() {
   
   // Update the recorded motor positions
   for (int i = 0; i < ROTARY_COUNT; i++) {
-    positions[i] += (int8_t) Wire.read();  // Must cast to signed 8-bit type
+
+    // another integer array OU (over/uder 0-30000)
+    if(positions[i] > 30000){
+      int temp = positions[i];
+      int remendier = temp - 30000;
+      positions[i] = remendier;
+      UO[i] += 1;      
+    }
+
+    if(positions[i] < -30000 && positions[i] < 0){
+      int temp = positions[i];
+      int remendier = temp + 30000;
+      positions[i] = remendier;
+      UO[i] -= 1;
+    }
+    
+    int r = (int) ((int8_t) Wire.read());  // Must cast to signed 8-bit type
+    positions[i] += (r*-1);
+    rotations[i] = (r*-1);
+
+    
   }
 }
 
@@ -219,6 +242,18 @@ void printMotorPositions() {
   Serial.print("Motor positions: ");
   for (int i = 0; i < ROTARY_COUNT; i++) {
     Serial.print(positions[i]);
+    Serial.print(' ');
+  }
+  Serial.print("                      ");
+  Serial.print("UO: ");
+  for (int i = 0; i < ROTARY_COUNT; i++) {
+    Serial.print(UO[i]);
+    Serial.print(' ');
+  }
+  Serial.print("                       ");
+  Serial.print("rotations: ");
+  for (int i = 0; i < ROTARY_COUNT; i++) {
+    Serial.print(rotations[i]);
     Serial.print(' ');
   }
   Serial.println();
@@ -243,8 +278,9 @@ void storeFileInRegister(String file, long freq){
   // Change this if 1st or 2nd bit is relevant, etc.
   for (int i = 1; i <= 250; i++) {
       Wire.beginTransmission(register_address); // open I2C communication to intended receiver
-      Wire.setclock(freq);
+      //Wire.setClock(freq);
       Wire.write( (byte) (file.charAt(i)) );   // sends the string (which is the file contents)
+      // sleep 1/frequency
       Wire.endTransmission(); // end I2C communcation.
   }  
 }
