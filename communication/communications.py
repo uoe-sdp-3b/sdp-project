@@ -154,12 +154,13 @@ class RobotComms(CommsToArduino):
   def grab(self, speed):
       self.write(TEAM, GRAB, speed)
   
-  def store(self, file):
+  def store(self, file_path):
       bytes_to_store = len(file)
-      self.write(TEAM, STORE, bytes_to_store)
-      for byte in bytes_to_store:
-          self.to_robot(byte)
-          sleep(100) # can be changed
+      with open(file_path,'r') as f:
+          self.write(TEAM, STORE, bytes_to_store)
+          for byte in bytes_to_store:
+              self.to_robot(byte)
+              sleep(100) # can be changed
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
