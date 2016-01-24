@@ -15,7 +15,9 @@ FORWARD = 1
 BACKWARD = 2
 LEFT = 3
 RIGHT = 4
-GRAB = 5
+KICK = 5
+GRAB = 6
+STORE = 7
 
 
 
@@ -146,8 +148,22 @@ class RobotComms(CommsToArduino):
   def right(self, speed):
       self.write(TEAM, RIGHT, int(speed))
 
+  def kick(self, speed):
+      self.write(TEAM, KICK, speed)
+
   def grab(self, speed):
       self.write(TEAM, GRAB, speed)
+  
+  def store(self, file_path):
+      with open(file_path,'r') as f:
+          file_contents = f.read()
+          bytes_to_store = len(file_contents)
+          checksum = create_checksum(bytes_to_store, STORE)
+          init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store, checksum, 2)
+          self.to_robot(init_command)
+          for byte in file_contents:
+              sleep(100) # can be changed
+              self.to_robot(byte)
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
