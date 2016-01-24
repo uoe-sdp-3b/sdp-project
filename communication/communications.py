@@ -155,12 +155,15 @@ class RobotComms(CommsToArduino):
       self.write(TEAM, GRAB, speed)
   
   def store(self, file_path):
-      bytes_to_store = len(file)
       with open(file_path,'r') as f:
-          self.write(TEAM, STORE, bytes_to_store)
-          for byte in bytes_to_store:
-              self.to_robot(byte)
+          file_contents = f.read()
+          bytes_to_store = len(file_contents)
+          checksum = create_checksum(bytes_to_store, STORE)
+          init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store, checksum, 2)
+          self.to_robot(init_command)
+          for byte in file_contents:
               sleep(100) # can be changed
+              self.to_robot(byte)
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
