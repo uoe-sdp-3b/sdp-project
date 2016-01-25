@@ -156,7 +156,7 @@ class RobotComms(CommsToArduino):
       self.write(TEAM, GRAB, speed)
   
   def store(self, file_path, frequency):
-      with open(file_path,'r') as f:
+      with open(file_path,'br') as f:
           file_contents = f.read()
           bytes_to_store = len(file_contents)
           # Randint is a hack, but this is only going to be used for 2 tests
