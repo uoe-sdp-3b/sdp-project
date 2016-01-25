@@ -5,6 +5,8 @@ import fileinput
 import readline
 from time import sleep
 from threading import Thread
+from random import randint
+
 
 # constants
 TEAM = 0
@@ -18,7 +20,6 @@ RIGHT = 4
 KICK = 5
 GRAB = 6
 STORE = 7
-
 
 
 class CommsToArduino(object):
@@ -154,16 +155,18 @@ class RobotComms(CommsToArduino):
   def grab(self, speed):
       self.write(TEAM, GRAB, speed)
   
-  def store(self, file_path):
+  def store(self, file_path, frequency):
       with open(file_path,'r') as f:
           file_contents = f.read()
           bytes_to_store = len(file_contents)
-          checksum = create_checksum(bytes_to_store, STORE)
-          init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store, checksum, 2)
+          # Randint is a hack, but this is only going to be used for 2 tests
+          checksum = self.create_checksum(bytes_to_store, STORE)
+          init_command = "%d%d%03d%d%d\r" % (TEAM, STORE, bytes_to_store, checksum, randint(2,1000000))
           self.to_robot(init_command)
+          sleep(1)
           for byte in file_contents:
-              sleep(100) # can be changed
               self.to_robot(byte)
+              sleep(1/float(frequency)) # can be changed
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
