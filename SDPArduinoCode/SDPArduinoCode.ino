@@ -18,24 +18,24 @@
 #define STORE 7
 
 // Outbound message definitions
-#define DONE "Robot ignores"
-#define CHECKSUM_FAILED "Checksum failed"
-#define UNRECOGNIZED_COMMAND "Wat?"
-
-int  lastSeqNo;
-bool done;
-
-int bytes_to_store;
+#define CHECKSUM_FAILED "0CF"
+#define UNRECOGNIZED_COMMAND "0UC"
 
 // Encoder Board Variables
 #define ROTARY_SLAVE_ADDRESS 5
 #define ROTARY_COUNT 6
 #define PRINT_DELAY 200
 
+
+int bytes_to_store = 0;
+
 // Initial motor position is 0.
 int positions[ROTARY_COUNT] = {0};
 int UO[ROTARY_COUNT] = {0};
+int dynamicPositions[ROTARY_COUNT] = {0};
+/////////////////////////////////////////////
 int rotations[ROTARY_COUNT] = {0};
+
 
 
 void setup(){
@@ -43,34 +43,13 @@ void setup(){
   SDPsetup();
   Serial.setTimeout(100); // time out for accepting a string
 
-  // setup communication channel to our designated group channel = 0x20
-//  Serial.write("+++");
-//  Serial.write("ATCN20");
-//  Serial.write("ATAC");
-//  Serial.write("ATDN");
-
   // 1. inital test to see if message is recieved to computer stating "hello world"
    helloWorld();
 }
 
-// Returns true if the command should be ignored (duplicate command)
-// Origin of idea:
-// https://bitbucket.org/angel-ignatov/sdp14-15-group-15/src/150da3baeb2045b83add95c70cfca494873c4180/arduino/arduino.ino?at=master&fileviewer=file-view-default
-bool ignore(int seqNo)
-{
-  if (seqNo == lastSeqNo) {
-    
-    // !! THIS CHECK MIGHT BE REDUNDANT AND NEED REMOVING
-    if (done) {
-      Serial.println(DONE);
-    }
-    return true;
-  } else {
-    lastSeqNo = seqNo;
-    done = false;
-    return false;
-  }
-}
+/////////////////////////////////////////////////////////////////////////////////////
+//                              Helper Functions                                   //
+/////////////////////////////////////////////////////////////////////////////////////
 
 
 int getNumFromChar(char c){
@@ -113,28 +92,48 @@ int check_checksum(String c, int opcode, int arg){
   
 }
 
+void resetDynamicPositions(){
+  int i;
+  for(i = 0; i < 5; i++){
+    dynamicPositions[i] = 0;
+  }
+  
+}
+
+//////////////////////////////////////
+//          Robot Stop              //
+//////////////////////////////////////
 
 void stopRobot(){
 
   motorAllStop();
 
   // send reply message
-  Serial.println("Robot stopped");
+  Serial.println("0RS");
+  printMotorPositions();
   
 }
+
+//////////////////////////////////////
+//          Robot Forward           //
+//////////////////////////////////////
 
 void moveRobotForward(int power){
 
   //motorStop(0); // this might be useful, in the case the robot is already in a turning move
+
+  motorForward(FRONT_LEFT_MOTOR, power);
+  motorForward(FRONT_RIGHT_MOTOR, (int) (power*0.99));
   
-  motorBackward(FRONT_LEFT_MOTOR,power-2); // left motor is more powerful than right. This will make sure they have the same roatations +- 1 
-                                          // could be more acurate if we use 0-255 instead of 0-100 for power rating.
-  motorBackward(FRONT_RIGHT_MOTOR,power);
 
   // need to create a reply message to let the PC acknowledge the accepted request and execution
-  Serial.println("Robot forward");
+  Serial.println("0RF");
 
 }
+
+//////////////////////////////////////
+//          Robot Back              //
+//////////////////////////////////////
 
 void moveRobotBackward(int power){
 
@@ -145,49 +144,84 @@ void moveRobotBackward(int power){
   motorStop(FRONT_RIGHT_MOTOR);
   
   // set motors to move backwards
-  motorForward(FRONT_LEFT_MOTOR, power);
-  motorForward(FRONT_RIGHT_MOTOR,power);
+  motorBackward(FRONT_LEFT_MOTOR, power);
+  motorBackward(FRONT_RIGHT_MOTOR, ((int) power*0.99));
 
   // send reply message
-  Serial.println("Robot back");
+  Serial.println("0RB");
   
 }
+
+//////////////////////////////////////
+//          Robot Left              //
+//////////////////////////////////////
 
 void rotateRobotLeft(int power){
 
-  motorAllStop(); // use this for now, can change later on
+  //motorAllStop(); // use this for now, can change later on
 
   // set motors for left rotation
-  motorBackward(FRONT_RIGHT_MOTOR,power);
-  motorBackward(TURNING_MOTOR,power);
+  motorForward(FRONT_RIGHT_MOTOR, power);
+  //delay(50);
 
+  // set motors for left rotation
+  motorBackward(FRONT_LEFT_MOTOR, power);
+  motorForward(TURNING_MOTOR, power);
+  
+  //motorBackward(FRONT_LEFT_MOTOR, power);
+  //motorForward(TURNING_MOTOR, power);
+  
   // send reply message 
-  Serial.println("Robot left");
+  Serial.println("0RL");
   
 }
+
+//////////////////////////////////////
+//          Robot Right             //
+//////////////////////////////////////
 
 void rotateRobotRight(int power){
 
   motorAllStop(); // use this for now, can change later
 
   // set motors for right rotation
-  motorBackward(FRONT_LEFT_MOTOR, power);
-  motorForward(TURNING_MOTOR, power);
+  motorForward(FRONT_LEFT_MOTOR, power);
+  motorBackward(TURNING_MOTOR, power);
 
   // send reply message
-  Serial.println("Robot right");
+  Serial.println("0RR");
   
 }
+
+//////////////////////////////////////
+//          Robot Kick              //
+//////////////////////////////////////
 
 void robotKick(int power){
 
+  int d = 1500 - (power * 10);
+  Serial.println(d);
+
+  motorForward(ACTION_MOTOR, 70);
+  delay(200);
+  
   // move action motor backward
   motorBackward(ACTION_MOTOR,power);
+  delay(d);
+  motorAllStop();
+
+  motorForward(ACTION_MOTOR, 70);
+  delay(150);
+  motorAllStop();
 
   // send reply message
-  Serial.println("Robot kick");
+  Serial.println("0RK");
   
 }
+
+//////////////////////////////////////
+//          Robot Grab              //
+//////////////////////////////////////
 
 void robotGrab(int power){
 
@@ -195,21 +229,49 @@ void robotGrab(int power){
   motorForward(ACTION_MOTOR,power);
 
   // send reply message
-  Serial.println("Robot grab");
+  Serial.println("0RG");
   
 }
 
 
 void robotForwardDistance(int distance){
-  // will eventually use this function, and parameter ARG from input will represent how far to move forward
-  // rather than the power to move forward.
 
-  // need encoders working first!
+
+  // reset dynamicPositions
+  resetDynamicPositions();
+
+  // setup positions of rotations
+  int rot = (int) (distance * 6.2471) - 10; // 6.2471 = rotations for 1 cm (WRONG ATM)
+  int left = dynamicPositions[0];
+  int right = dynamicPositions[1];
+
+  // turn on motors
+  motorForward(FRONT_LEFT_MOTOR, 100);
+  motorForward(FRONT_RIGHT_MOTOR, 100);
+
+  while(left < rot || right < rot){
+    delay(5);
+    updateMotorPositions();
+    //printDynamicPositions();
+    left = dynamicPositions[0];
+    //Serial.println(left);
+    right = dynamicPositions[1];    
+    //Serial.println(right);
+  }
+
+  motorAllStop();
+
+  Serial.println("0RFD");
+  
+
+
+  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                              TESTING ENCODER BOARD READS                                             //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 void updateMotorPositions() {
   // Request motor position deltas from rotary slave board
@@ -233,12 +295,26 @@ void updateMotorPositions() {
       UO[i] -= 1;
     }
     
-    int r = (int) ((int8_t) Wire.read());  // Must cast to signed 8-bit type
-    positions[i] += (r*-1);
-    rotations[i] = (r*-1);
+    int r = (int8_t) Wire.read();  // Must cast to signed 8-bit type
+    positions[i] -= r;
+    dynamicPositions[i] -= r;
+
+    // will go soon
+    rotations[i] = -r;
 
     
   }
+}
+
+void printDynamicPositions(){
+    Serial.print("dynamic positions: ");
+    for (int i = 0; i < ROTARY_COUNT; i++) {
+    Serial.print(dynamicPositions[i]);
+    Serial.print(' ');
+  }
+  Serial.println();
+  delay(PRINT_DELAY);  // Delay to avoid flooding serial out
+  
 }
 
 void printMotorPositions() {
@@ -263,38 +339,35 @@ void printMotorPositions() {
   delay(PRINT_DELAY);  // Delay to avoid flooding serial out
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                Milestone 1 communication functions                                     //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int getFrequency(String c){
-  int f = 100;
-
-  return f;
-}
-
 void storeByte(byte one_byte){
   int register_address = 69; 
-  //Serial.println("Byte:");
-  //Serial.println(one_byte);
   Wire.beginTransmission(register_address); // open I2C communication to intended receiver
   Wire.write( one_byte );   // sends the string (which is the file contents)
   Wire.endTransmission(); // end I2C communcation.
-  //Serial.println("Bytes left:");
   bytes_to_store--;
-  //Serial.println(bytes_to_store);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void serialFlush(){
+  while(Serial.available() > 0) {
+    char t = Serial.read();
+  }
+} 
+
 
 void loop(){
   
-  //Serial.println(bytes_to_store);
   updateMotorPositions();
   //printMotorPositions();
+  //printDynamicPositions();
+  //Serial.println("0");
 
   // if message is available on our frequency accept it.
   if(Serial.available() > 0){
@@ -308,11 +381,13 @@ void loop(){
     
     // save message sent from PC to STRING c.
     String c = Serial.readString();
-    //Serial.println("Full string: <");
-    //Serial.println(c);
-    
-    if(c.length()< 7){ 
-      Serial.println("Robot input too short");
+    c.trim();
+
+    // if mesage is incomplete send error message and flush serial 
+    if(c.length() != 6){
+      Serial.println(c);
+      Serial.println("0IW");
+      serialFlush();
       return;
     }
     
@@ -323,19 +398,8 @@ void loop(){
       
       // Quits if sig belongs to other teams
       // OR if command is redundant (i.e. already executed)
-      if(sig != 0 || ignore(seqNo)){ return; }
+      if(sig != 0){ return; }
 
-      // for accepting file
-      if(sig == 3){
-
-        // get frequency from file.
-        //int frequency = getFrequency(c);
-        
-        // storeStringInRegister(int frequency) 
-
-
-        
-      }
 
       int opcode = getOpcode(c);
       int arg = getArg(c);
@@ -350,7 +414,8 @@ void loop(){
           case STOP:  stopRobot();
           break;
         
-          case FORWARD:  moveRobotForward(arg);
+          case FORWARD:  robotForwardDistance(arg);
+          //case FORWARD: moveRobotForward(arg);
           break;
       
           case BACKWARD:  moveRobotBackward(arg);
@@ -361,8 +426,8 @@ void loop(){
 
           case RIGHT:  rotateRobotRight(arg);
           break;
-          
-          case KICK: robotKick(arg);
+
+          case KICK: Serial.println("Stage 1"); robotKick(arg); Serial.println("Stage 2");
           break;
 
           case GRAB: robotGrab(arg);
@@ -375,15 +440,12 @@ void loop(){
           break;
       
         } // switch 
-        done = true;
       } // if checksum
       else{
         // checksum is not correct, sig is therefore message was corrupted
         // reply: incorrect message (re-send)
         Serial.println(CHECKSUM_FAILED);
       }
-      
-    // } // if sig == 0 (if this fails, message is not for out team)
   } // if serial.avalaible 
 } // loop body
 
