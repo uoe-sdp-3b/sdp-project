@@ -35,7 +35,7 @@ void helloWorld() {
   Serial.println("hello world");
 }
 
-void motorForward(int motorNum, int motorPower) { //Makes Motor motorNum go forwards at a power of motorPower
+void motorBackward(int motorNum, int motorPower) { //Makes Motor motorNum go forwards at a power of motorPower
   if (motorNum >= 0 and motorNum <= 5){
     if (motorPower < 0){ //Lowest power possible = 0.
       motorPower = 0;
@@ -53,7 +53,7 @@ void motorForward(int motorNum, int motorPower) { //Makes Motor motorNum go forw
   }
 }
 
-void motorBackward(int motorNum, int motorPower) { //Makes Motor motorNum go backwards at a power of motorPower
+void motorForward(int motorNum, int motorPower) { //Makes Motor motorNum go backwards at a power of motorPower
   if (motorNum >= 0 and motorNum <= 5){
     if (motorPower < 0){
       motorPower = 0;//Lowest power possible = 0.
