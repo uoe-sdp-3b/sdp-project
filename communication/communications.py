@@ -230,7 +230,6 @@ class RobotComms(CommsToArduino):
             total_turn -= turn
             command += "left " + str(turn) + " $ "
             command += "forward " + str(abs(y)) + " $ stop $ "
-            
         angle_remaining = (z - total_turn) % 360
 
         # Mod 360 to avoid treachery
