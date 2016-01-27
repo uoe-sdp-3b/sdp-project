@@ -88,9 +88,14 @@ class NcursesUI(object):
         (height, width) = self.chatWindow.getmaxyx()
 
         # Put the received data in the chat window
-        self.chatWindow.scroll(1)
-        self.chatWindow.addstr(height - 1, 0, prefix, color)
-        self.chatWindow.addstr(height - 1, len(prefix), message)
+        try:
+            self.chatWindow.scroll(1)
+            self.chatWindow.addstr(height - 1, 0, prefix, color)
+            self.chatWindow.addstr(height - 1, len(prefix), message)
+        except TypeError as e:
+            print("STARTING ERROR MESSAGE")
+            print(repr(message))
+            print(e)
 
         # Move the cursor back to the chat input window
         # self.textboxWindow.move(0, 0)
