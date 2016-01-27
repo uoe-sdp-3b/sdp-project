@@ -203,7 +203,7 @@ class RobotComms(CommsToArduino):
                                    args_local[0])
             except TypeError as e:
                 self.queue.put(str(e))
-    
+
     # x - forward distance
     # y - right distance
     # z angle to the right of x
@@ -211,18 +211,18 @@ class RobotComms(CommsToArduino):
         x = int(x)
         y = int(y)
         z = int(z)
-    
+
         command = ""
-        
-        if   x > 0:
+
+        if x > 0:
             command += "forward " + str(abs(x)) + " $ stop $ "
         elif x < 0:
             command += "backward " + str(abs(x)) + " $ stop $ "
-        
+
         total_turn = 0
         turn = 90
-        
-        if   y > 0:
+
+        if y > 0:
             total_turn += turn
             command += "right " + str(turn) + " $ "
             command += "forward " + str(abs(y)) + " $ stop $ "
@@ -230,15 +230,15 @@ class RobotComms(CommsToArduino):
             total_turn -= turn
             command += "left " + str(turn) + " $ "
             command += "forward " + str(abs(y)) + " $ stop $ "
-        
+            
         angle_remaining = (z - total_turn) % 360
-        
+
         # Mod 360 to avoid treachery
-        if angle_remaining =< 180:
+        if angle_remaining <= 180:
             command += "right " + str(angle_remaining)
-        else
+        else:
             command += "left " + str(360 - angle_remaining)
-        
+
         # Should work. Do test.
         self.compose(command)
 
