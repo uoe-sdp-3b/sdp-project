@@ -203,7 +203,40 @@ class RobotComms(CommsToArduino):
                                    args_local[0])
             except TypeError as e:
                 self.queue.put(str(e))
-
+    
+    # x - forward distance
+    # y - right distance
+    # z angle to the right of x
+    def xyzmove(self, x, y, z):
+        command = ""
+        
+        if int(x) > 0:
+            command += "forward " + str(abs(int(x))) + " $ "
+        elif int(x) < 0:
+            command += "backward " + str(abs(int(x))) + " $ "
+        
+        total_turn = 0
+        turn = 90
+        
+        if int(y) > 0:
+            total_turn += turn
+            command += "right " + str(turn) + " $ "
+            command += "forward " + str(abs(int(y))) + " $ "
+        elif int(y) < 0:
+            total_turn -= turn
+            command += "left " + str(turn) + " $ "
+            command += "forward " + str(abs(int(y))) + " $ "
+        
+        angle_remaining = int(z) - total_turn
+        
+        # Mod 360 to avoid treachery
+        if angle_remaining > 0:
+            command += "right " + str(abs(angle_remaining) % 360)
+        else
+            command += "left " + str(abs(angle_remaining) % 360)
+        
+        # Should work. Do test.
+        self.compose(command)
 
 if __name__ == "__main__":
     print("This class is not designed to be run by hand")
