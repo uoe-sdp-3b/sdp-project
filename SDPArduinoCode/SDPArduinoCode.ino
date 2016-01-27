@@ -158,18 +158,10 @@ void moveRobotBackward(int power){
 
 void rotateRobotLeft(int power){
 
-  //motorAllStop(); // use this for now, can change later on
-
   // set motors for left rotation
   motorForward(FRONT_RIGHT_MOTOR, power);
-  //delay(50);
-
-  // set motors for left rotation
   motorBackward(FRONT_LEFT_MOTOR, power);
   motorForward(TURNING_MOTOR, power);
-  
-  //motorBackward(FRONT_LEFT_MOTOR, power);
-  //motorForward(TURNING_MOTOR, power);
   
   // send reply message 
   Serial.println("0RL");
@@ -182,14 +174,13 @@ void rotateRobotLeft(int power){
 
 void rotateRobotRight(int power){
 
-  motorAllStop(); // use this for now, can change later
-
-  // set motors for right rotation
+  // set motors for left rotation
+  motorBackward(FRONT_RIGHT_MOTOR, power);
   motorForward(FRONT_LEFT_MOTOR, power);
   motorBackward(TURNING_MOTOR, power);
-
-  // send reply message
-  Serial.println("0RR");
+  
+  // send reply message 
+  Serial.println("0RL");
   
 }
 
@@ -261,11 +252,98 @@ void robotForwardDistance(int distance){
 
   motorAllStop();
 
-  Serial.println("0RFD");
-  
+  Serial.println("0RF");  
+}
+
+void robotBackwardDistance(int distance){
 
 
+  // reset dynamicPositions
+  resetDynamicPositions();
+
+  // setup positions of rotations
+  int rot = (int) (-distance * 6.2471) + 10; // 6.2471 = rotations for 1 cm (WRONG ATM)
+  int left = dynamicPositions[0];
+  int right = dynamicPositions[1];
+
+  // turn on motors
+  motorBackward(FRONT_LEFT_MOTOR, 100);
+  motorBackward(FRONT_RIGHT_MOTOR, 100);
+
+  while(left > rot || right > rot){
+    delay(5);
+    updateMotorPositions();
+    //printDynamicPositions();
+    left = dynamicPositions[0];
+    //Serial.println(left);
+    right = dynamicPositions[1];    
+    //Serial.println(right);
+  }
+
+  motorAllStop();
+
+  Serial.println("0RB");  
+}
+
+void robotLeft(int d){
+
+    // reset dynamicPositions
+  resetDynamicPositions();
+
+  // setup positions of rotations
+  int rot = (int) (d*0.9); // 1.26414 = rotations for 1 degrees (WRONG ATM)
+  int left = dynamicPositions[0];
+  int right = dynamicPositions[1];
+
+  // turn on motors
+  motorForward(FRONT_RIGHT_MOTOR, 50);
+  motorBackward(FRONT_LEFT_MOTOR, 50);
+  motorForward(TURNING_MOTOR, 50);
+
+  while(left > -rot || right < rot){
+    delay(5);
+    updateMotorPositions();
+    //printDynamicPositions();
+    left = dynamicPositions[0];
+    //Serial.println(left);
+    right = dynamicPositions[1];    
+    //Serial.println(right);
+  }
+
+  motorAllStop();
+
+  Serial.println("0RL");
   
+}
+
+void robotRight(int d){
+  
+    // reset dynamicPositions
+  resetDynamicPositions();
+
+  // setup positions of rotations
+  int rot = (int) (d*0.9); // 1.26414 = rotations for 1 degrees (WRONG ATM)
+  int left = dynamicPositions[0];
+  int right = dynamicPositions[1];
+
+  // turn on motors
+  motorBackward(FRONT_RIGHT_MOTOR, 50);
+  motorForward(FRONT_LEFT_MOTOR, 50);
+  motorBackward(TURNING_MOTOR, 50);
+
+  while(left < rot || right > -rot){
+    delay(5);
+    updateMotorPositions();
+    //printDynamicPositions();
+    left = dynamicPositions[0];
+    //Serial.println(left);
+    right = dynamicPositions[1];    
+    //Serial.println(right);
+  }
+
+  motorAllStop();
+
+  Serial.println("0RR");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -350,6 +428,7 @@ void storeByte(byte one_byte){
   Wire.beginTransmission(register_address); // open I2C communication to intended receiver
   Wire.write( one_byte );   // sends the string (which is the file contents)
   Wire.endTransmission(); // end I2C communcation.
+  Serial.println(one_byte, DEC);
   bytes_to_store--;
 }
 
@@ -418,13 +497,16 @@ void loop(){
           //case FORWARD: moveRobotForward(arg);
           break;
       
-          case BACKWARD:  moveRobotBackward(arg);
+          //case BACKWARD:  moveRobotBackward(arg);
+          case BACKWARD:    robotBackwardDistance(arg);
           break;
       
-          case LEFT:  rotateRobotLeft(arg);
+          //case LEFT:  rotateRobotLeft(arg);
+          case LEFT: robotLeft(arg);
           break;
 
-          case RIGHT:  rotateRobotRight(arg);
+          //case RIGHT:  rotateRobotRight(arg);
+          case RIGHT:   robotRight(arg);
           break;
 
           case KICK: Serial.println("Stage 1"); robotKick(arg); Serial.println("Stage 2");
