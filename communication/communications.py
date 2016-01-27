@@ -208,32 +208,36 @@ class RobotComms(CommsToArduino):
     # y - right distance
     # z angle to the right of x
     def xyzmove(self, x, y, z):
+        x = int(x)
+        y = int(y)
+        z = int(z)
+    
         command = ""
         
-        if int(x) > 0:
-            command += "forward " + str(abs(int(x))) + " $ "
-        elif int(x) < 0:
-            command += "backward " + str(abs(int(x))) + " $ "
+        if   x > 0:
+            command += "forward " + str(abs(x)) + " $ "
+        elif x < 0:
+            command += "backward " + str(abs(x)) + " $ "
         
         total_turn = 0
         turn = 90
         
-        if int(y) > 0:
+        if   y > 0:
             total_turn += turn
             command += "right " + str(turn) + " $ "
-            command += "forward " + str(abs(int(y))) + " $ "
-        elif int(y) < 0:
+            command += "forward " + str(abs(y)) + " $ "
+        elif y < 0:
             total_turn -= turn
             command += "left " + str(turn) + " $ "
-            command += "forward " + str(abs(int(y))) + " $ "
+            command += "forward " + str(abs(y)) + " $ "
         
-        angle_remaining = int(z) - total_turn
+        angle_remaining = (z - total_turn) % 360
         
         # Mod 360 to avoid treachery
-        if angle_remaining > 0:
-            command += "right " + str(abs(angle_remaining) % 360)
+        if angle_remaining =< 180:
+            command += "right " + str(angle_remaining)
         else
-            command += "left " + str(abs(angle_remaining) % 360)
+            command += "left " + str(360 - angle_remaining)
         
         # Should work. Do test.
         self.compose(command)
