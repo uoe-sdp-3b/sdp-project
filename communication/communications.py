@@ -215,9 +215,9 @@ class RobotComms(CommsToArduino):
         command = ""
         
         if   x > 0:
-            command += "forward " + str(abs(x)) + " $ "
+            command += "forward " + str(abs(x)) + " $ stop $ "
         elif x < 0:
-            command += "backward " + str(abs(x)) + " $ "
+            command += "backward " + str(abs(x)) + " $ stop $ "
         
         total_turn = 0
         turn = 90
@@ -225,11 +225,11 @@ class RobotComms(CommsToArduino):
         if   y > 0:
             total_turn += turn
             command += "right " + str(turn) + " $ "
-            command += "forward " + str(abs(y)) + " $ "
+            command += "forward " + str(abs(y)) + " $ stop $ "
         elif y < 0:
             total_turn -= turn
             command += "left " + str(turn) + " $ "
-            command += "forward " + str(abs(y)) + " $ "
+            command += "forward " + str(abs(y)) + " $ stop $ "
         
         angle_remaining = (z - total_turn) % 360
         
