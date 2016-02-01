@@ -35,6 +35,7 @@ class CommsToArduino(object):
     queue = Queue()
     internal_queue = Queue()
     write_queue = Queue()
+    seq_override = 2
 
     # these should be hard-coded, the values should not change
     def __init__(self,
@@ -77,10 +78,9 @@ class CommsToArduino(object):
         Sends the code to the Arduino
         """
         checksum = self.create_checksum(arg, opcode)
-        opcode_string = "%d%d%03d%d\r" % (sig, opcode, arg, checksum)
+        opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
         self.to_robot(opcode_string)
         
-        #!! Re-add seq bits
         # Check twice if response received, if not - resend
         success = False
         while (!success):
@@ -88,13 +88,19 @@ class CommsToArduino(object):
                 sleep(0.1)
                 response = self.internal_queue.peek()
                 if response:
-                    # Check if success (not checksum fail or unrecognized)
-                    if response not in ["0CF","0UC"]:
+                    # Check if success
+                    # (not checksum fail or unrecognized or bad command length)
+                    # Note: would be better to have a specific response upon success
+                    if response not in ["0CF","0UC", "OIW"] and
+                       len(response) == 3:
                         success = True
                     break
             
             if (!success):
-                self.to_robot(opcode_string)
+                # Resend command (with overriding seqNo)
+                self.to_robot(opcode_string[:-1] + str(self.seq_override))
+                # Change overriding seqNo (in case command fails twice)
+                self.seq_override = min(2, (self.seq_override + 1) % 10)
             
         return
 
