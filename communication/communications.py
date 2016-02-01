@@ -79,6 +79,23 @@ class CommsToArduino(object):
         checksum = self.create_checksum(arg, opcode)
         opcode_string = "%d%d%03d%d\r" % (sig, opcode, arg, checksum)
         self.to_robot(opcode_string)
+        
+        #!! Re-add seq bits
+        # Check twice if response received, if not - resend
+        success = False
+        while (!success):
+            for i in range(2):
+                sleep(0.1)
+                response = self.internal_queue.peek()
+                if response:
+                    # Check if success (not checksum fail or unrecognized)
+                    if response not in ["0CF","0UC"]:
+                        success = True
+                    break
+            
+            if (!success):
+                self.to_robot(opcode_string)
+            
         return
 
     def to_robot(self, message):
