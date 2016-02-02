@@ -19,6 +19,8 @@ KICK = 5
 GRAB = 6
 STORE = 7
 
+ERROR_CODES = ["0CF","0UC", "OIW"]
+
 RETURN_CODE = {
     "STOP": "0RS",
     "FORWARD": "0RF",
@@ -83,22 +85,23 @@ class CommsToArduino(object):
         
         # Check twice if response received, if not - resend
         success = False
-        while (!success):
+        while (not success):
             for i in range(2):
                 sleep(0.1)
-                response = self.internal_queue.peek()
-                if response:
+                if self.internal_queue.peek():
+                    response = self.internal_queue.get()
+                    
                     # Check if success
                     # (not checksum fail or unrecognized or bad command length)
                     # Note: would be better to have a specific response upon success
-                    if response not in ["0CF","0UC", "OIW"] and
+                    if response not in ERROR_CODES and
                        len(response) == 3:
                         success = True
                     break
             
-            if (!success):
+            if (not success):
                 # Resend command (with overriding seqNo)
-                self.to_robot(opcode_string[:-1] + str(self.seq_override))
+                self.to_robot("%s%d\r" % (opcode_string[:-2], self.seq_override))
                 # Change overriding seqNo (in case command fails twice)
                 self.seq_override = min(2, (self.seq_override + 1) % 10)
             
