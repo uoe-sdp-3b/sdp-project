@@ -170,10 +170,9 @@ class RobotComms(CommsToArduino):
             if self._close:
                 self.queue.put("Read Stream Closed")
                 break
-            sleep(0.1)
             if self.comn and self.comn.is_open:
-                line = self.comn.readline()
-                if line.strip() != "":
+                line = self.comn.readline().strip()
+                if line != "":
                     self.queue.put(line)
                     self.internal_queue.put(line)
 
