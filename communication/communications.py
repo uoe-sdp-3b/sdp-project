@@ -81,6 +81,8 @@ class CommsToArduino(object):
         checksum = self.create_checksum(arg, opcode)
         opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
         
+        # Ensure that internal queue is clear initially
+        self.internal_queue.queue.clear()
         # Send command
         self.to_robot(opcode_string)
         
@@ -96,17 +98,18 @@ class CommsToArduino(object):
                 # Note: would be better to have a specific response upon success
                 if response not in ERROR_CODES and len(response) == 3:
                     sent_successfully = True
+                else:
+                    # Resend command after erroneous feedback (with overriding seqNo)
+                    self.to_robot("%s%d\r" % (opcode_string[:-2], self.seq_override))
+                    # Change overriding seqNo (in case command fails twice)
+                    self.seq_override = min(2, (self.seq_override + 1) % 10)
             else:
-                # Resend command (with overriding seqNo)
-                self.to_robot("%s%d\r" % (opcode_string[:-2], self.seq_override))
-                # Change overriding seqNo (in case command fails twice)
-                self.seq_override = min(2, (self.seq_override + 1) % 10)
+                # Resend command (because no response was ever got)
+                self.to_robot(opcode_string)
             
         return
 
     def to_robot(self, message):
-        # Ensure that internal queue is empty
-        self.internal_queue.queue.clear()
         # Send command
         self.comn.write(message)
 
