@@ -164,14 +164,13 @@ class RobotComms(CommsToArduino):
                 msg_dict = self.write_queue.get()
                 self._write(msg_dict["sig"], msg_dict["opcode"],
                             msg_dict["arg"], msg_dict["seqNo"])
-                sleep(1.5)
 
     def read_stream(self):
         while True:
             if self._close:
                 self.queue.put("Read Stream Closed")
                 break
-            sleep(0.5)
+            sleep(0.1)
             if self.comn and self.comn.is_open:
                 line = self.comn.readline()
                 if line.strip() != "":
