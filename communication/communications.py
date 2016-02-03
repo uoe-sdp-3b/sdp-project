@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from serial import Serial
 from Queue import Queue
-from peekqueue import PeekQueue
 from time import sleep
 from threading import Thread
 from random import randint
@@ -81,25 +80,23 @@ class CommsToArduino(object):
         """
         checksum = self.create_checksum(arg, opcode)
         opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
+        
+        # Send command
         self.to_robot(opcode_string)
         
-        # Check twice if response received, if not - resend
-        success = False
-        while (not success):
-            for i in range(2):
-                sleep(0.1)
-                if self.internal_queue.peek():
-                    response = self.internal_queue.get()
-                    
-                    # Check if success
-                    # (not checksum fail or unrecognized or bad command length)
-                    # Note: would be better to have a specific response upon success
-                    if response not in ERROR_CODES and
-                       len(response) == 3:
-                        success = True
-                    break
-            
-            if (not success):
+        # Keep sending command every 0.1s until you get a received OK response
+        sent_successfully = False
+        while (not sent_successfully):
+            sleep(0.1)
+            if not self.internal_queue.empty():
+                response = self.internal_queue.get()
+                
+                # Check if success
+                # (not checksum fail or unrecognized or bad command length)
+                # Note: would be better to have a specific response upon success
+                if response not in ERROR_CODES and len(response) == 3:
+                    sent_successfully = True
+            else:
                 # Resend command (with overriding seqNo)
                 self.to_robot("%s%d\r" % (opcode_string[:-2], self.seq_override))
                 # Change overriding seqNo (in case command fails twice)
@@ -108,6 +105,9 @@ class CommsToArduino(object):
         return
 
     def to_robot(self, message):
+        # Ensure that internal queue is empty
+        self.internal_queue.queue.clear()
+        # Send command
         self.comn.write(message)
 
     def write(self, sig, opcode, arg, ret="unknown"):
@@ -134,7 +134,7 @@ class CommsToArduino(object):
 class RobotComms(CommsToArduino):
     _close = False
     # last value read from the read_stream
-    internal_queue = PeekQueue()
+    internal_queue = Queue()
 
     # the message to wait for, or None if we aren't to wait
     wait_msg = None
