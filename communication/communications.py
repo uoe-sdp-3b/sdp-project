@@ -89,7 +89,7 @@ class CommsToArduino(object):
         # Keep sending command every 0.1s until you get a received OK response
         sent_successfully = False
         while (not sent_successfully):
-            sleep(0.1)
+            sleep(0.15)
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
                 
@@ -170,6 +170,8 @@ class RobotComms(CommsToArduino):
             if self._close:
                 self.queue.put("Read Stream Closed")
                 break
+            # Sleep needed to not just put single letters into queue
+            sleep(0.1)
             if self.comn and self.comn.is_open:
                 line = self.comn.readline().strip()
                 if line != "":
