@@ -18,7 +18,7 @@ KICK = 5
 GRAB = 6
 STORE = 7
 
-ERROR_CODES = ["0CF","0UC", "OIW"]
+ERROR_CODES = ["0CF","0UC", "0IW"]
 
 RETURN_CODE = {
     "STOP": "0RS",
@@ -36,7 +36,6 @@ class CommsToArduino(object):
     queue = Queue()
     internal_queue = Queue()
     write_queue = Queue()
-    seq_override = 2
 
     # these should be hard-coded, the values should not change
     def __init__(self,
@@ -74,22 +73,22 @@ class CommsToArduino(object):
 
         return (arg + opcode) % 10
 
-    def _write(self, sig, opcode, arg, seqNo):
+    def _write(self, sig, opcode, arg):
         """
         Sends the code to the Arduino
         """
         checksum = self.create_checksum(arg, opcode)
-        opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, seqNo)
-        
+        self.seqNo = not self.seqNo
+        opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, self.seqNo)
         # Ensure that internal queue is clear initially
         self.internal_queue.queue.clear()
         # Send command
         self.to_robot(opcode_string)
         
-        # Keep sending command every 0.1s until you get a received OK response
+        # Keep sending command every 0.25s until you get a received OK response
         sent_successfully = False
         while (not sent_successfully):
-            sleep(0.15)
+            sleep(0.25)
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
                 
@@ -98,12 +97,8 @@ class CommsToArduino(object):
                 # Note: would be better to have a specific response upon success
                 if response not in ERROR_CODES and len(response) == 3:
                     sent_successfully = True
-                else:
-                    # Resend command after erroneous feedback (with overriding seqNo)
-                    self.to_robot("%s%d\r" % (opcode_string[:-2], self.seq_override))
-                    # Change overriding seqNo (in case command fails twice)
-                    self.seq_override = min(2, (self.seq_override + 1) % 10)
-            else:
+            
+            if (not sent_successfully):
                 # Resend command (because no response was ever got)
                 self.to_robot(opcode_string)
             
@@ -120,14 +115,12 @@ class CommsToArduino(object):
 
         if self.isConnected:
             self.ready = False
-            self.seqNo = not self.seqNo
 
             self.write_queue.put({
                 'return': ret,
                 'sig': sig,
                 'opcode': opcode,
                 'arg': arg,
-                'seqNo': self.seqNo
             })
         else:
             print("Not connected to Arduino.")
@@ -163,7 +156,7 @@ class RobotComms(CommsToArduino):
             if not self.write_queue.empty():
                 msg_dict = self.write_queue.get()
                 self._write(msg_dict["sig"], msg_dict["opcode"],
-                            msg_dict["arg"], msg_dict["seqNo"])
+                            msg_dict["arg"])
 
     def read_stream(self):
         while True:
@@ -171,7 +164,7 @@ class RobotComms(CommsToArduino):
                 self.queue.put("Read Stream Closed")
                 break
             # Sleep needed to not just put single letters into queue
-            sleep(0.1)
+            sleep(0.2)
             if self.comn and self.comn.is_open:
                 line = self.comn.readline().strip()
                 if line != "":
@@ -232,6 +225,44 @@ class RobotComms(CommsToArduino):
                                    args_local[0])
             except TypeError as e:
                 self.queue.put(str(e))
+    
+    # x - forward distance
+    # y - right distance
+    # z angle to the right of x
+    # Note: this function is perfect for validating if communications work
+    #       without flaws
+    def xyzmove(self, x, y, z):
+        x = int(x)
+        y = int(y)
+        z = int(z)
+
+        command = ""
+
+        if x > 0:
+            command += "forward " + str(abs(x)) + " $ stop $ "
+        elif x < 0:
+            command += "backward " + str(abs(x)) + " $ stop $ "
+
+        total_turn = 0
+        turn = 90
+
+        if y > 0:
+            total_turn += turn
+            command += "right " + str(turn) + " $ "
+            command += "forward " + str(abs(y)) + " $ stop $ "
+        elif y < 0:
+            total_turn -= turn
+            command += "left " + str(turn) + " $ "
+            command += "forward " + str(abs(y)) + " $ stop $ "
+        angle_remaining = (z - total_turn) % 360
+
+        # Mod 360 to avoid treachery
+        if angle_remaining <= 180:
+            command += "right " + str(angle_remaining)
+        else:
+            command += "left " + str(360 - angle_remaining)
+
+        self.compose(command)
 
 
 if __name__ == "__main__":
