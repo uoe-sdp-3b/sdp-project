@@ -4,6 +4,7 @@ from Queue import Queue
 from time import sleep
 from threading import Thread
 from random import randint
+from math import *
 
 # constants
 TEAM = 0
@@ -17,6 +18,8 @@ RIGHT = 4
 KICK = 5
 GRAB = 6
 STORE = 7
+OPEN = 8
+CLOSE = 9
 
 ERROR_CODES = ["0CF","0UC", "0IW"]
 
@@ -28,6 +31,8 @@ RETURN_CODE = {
     "RIGHT": "0RR",
     "KICK": "0RK",
     "GRAB": "0RG",
+    "OPEN": "0RO",
+    "CLOSE": "0RC"
 }
 
 
@@ -84,24 +89,24 @@ class CommsToArduino(object):
         self.internal_queue.queue.clear()
         # Send command
         self.to_robot(opcode_string)
-        
+
         # Keep sending command every 0.25s until you get a received OK response
         sent_successfully = False
         while (not sent_successfully):
             sleep(0.25)
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
-                
+
                 # Check if success
                 # (not checksum fail or unrecognized or bad command length)
                 # Note: would be better to have a specific response upon success
                 if response not in ERROR_CODES and len(response) == 3:
                     sent_successfully = True
-            
+
             if (not sent_successfully):
                 # Resend command (because no response was ever got)
                 self.to_robot(opcode_string)
-            
+
         return
 
     def to_robot(self, message):
@@ -206,6 +211,14 @@ class RobotComms(CommsToArduino):
                 self.to_robot(byte)
                 sleep(1 / float(frequency))  # can be changed
 
+
+    def open(self):
+        self.write(TEAM, OPEN, 80, ret = RETURN_CODE["OPEN"]
+
+    def close(self):
+        self.write(TEAM, CLOSE, 80, ret = RETURN_CODE["CLOSE"]
+
+
     def c(self, *args):
         self.compose(args)
 
@@ -225,7 +238,7 @@ class RobotComms(CommsToArduino):
                                    args_local[0])
             except TypeError as e:
                 self.queue.put(str(e))
-    
+
     # x - forward distance
     # y - right distance
     # z angle to the right of x
@@ -263,6 +276,68 @@ class RobotComms(CommsToArduino):
             command += "left " + str(360 - angle_remaining)
 
         self.compose(command)
+
+    def move_and_grab(self, ballx, bally, robotx, roboty, angle):
+        xdist = robotx - ballx
+        ydist = roboty - bally
+        sdist = hypot(xdist, ydist)
+
+        theta = 0
+        # Angle from north, to ball, to robot
+        theta = angle_a_to_b(ballx, bally, robotx, roboty)
+
+        rotate = 0;
+        #
+        # print("Theta = " + str(theta))
+        rotate = ((180 + theta) - angle) % 360
+        # print()
+        # print("Rotation = " + str(rotate))
+        # print("Move distance = " + str(sdist))
+
+        derror =  0
+        sdist += derror
+
+        command += "right " + str(rotate) + " $"
+        command += "forward " + str(sdist) + " $"
+        command += "grab 100 $"
+
+        self.compose(command)
+
+    def rotate_kick(self, robotx, roboty, goalx, goaly, angle):
+        theta = angle_a_to_b(robotx, roboty, goalx, goaly)
+
+        if(angle > theta):
+            # print("Turning left " + str(angle-theta))
+            command += "left " +str(angle-theta) +" $"
+        else:
+            # print("Turning right " + str(theta-angle)
+            command ++ "right " +str(theta-angle) + " $"
+        command += "kick 100 $"
+        self.compose(command)
+
+
+    def angle_a_to_b(self, ax, ay, bx, by):
+        xdist = bx-ax;
+        ydist = by-ay;
+
+        if(xdist>0):
+            if(ydist>=0):
+                theta = 90 - degrees(atan(fabs(ydist/xdist)));
+            else:
+                theta = 90 + degrees(atan(fabs(ydist/xdist)));
+        else:
+            if(xdist<0):
+                if(ydist>=0):
+                    theta = 270 + degrees(atan(fabs(ydist/xdist)));
+                else:
+                    theta = 270 - degrees(atan(fabs(ydist/xdist)));
+            else:
+                if(ydist>=0):
+                    theta = 180;
+                else:
+                    theta = 0;
+
+        return theta;
 
 
 if __name__ == "__main__":
