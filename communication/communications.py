@@ -314,7 +314,7 @@ class RobotComms(CommsToArduino):
             v2 = ball_coordinates
 
             theta = angle_a_to_b(v1,v2)
-            theta2 = angle_a_to_b(robot_dir_vector,[0.0,0.0])
+            theta2 = angle_a_to_b(robot_dir_vector)
 
             turn = math.degrees(theta2 - theta)
             distance = dist(v1,v2)
@@ -330,9 +330,15 @@ class RobotComms(CommsToArduino):
 
             self.compose(commaned)
 
-        def rotate_kick(self, v1):
+        def rotate_kick(self):
+            # (ball_coordinates, robot_coordinates, robot_dir_vector) = getinfo()
+
+            v1 = robot_coordinates
+
             #angle between robot and goal
-            angle = angle_a_to_b(v1, (-320*0.46, 0))
+            theta = angle_a_to_b(v1, (-320*0.46, 0))
+            theta2 = angle_a_to_b(robot_dir_vector)
+
             command = ""
 
             if angle >= 0 and angle <= 180:
