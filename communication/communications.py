@@ -276,7 +276,7 @@ class RobotComms(CommsToArduino):
             command += "left " + str(360 - angle_remaining)
 
         self.compose(command)
-
+'''
     def move_and_grab(self, ballx, bally, robotx, roboty, angle):
         xdist = robotx - ballx
         ydist = roboty - bally
@@ -303,6 +303,8 @@ class RobotComms(CommsToArduino):
 
         self.compose(command)
 
+        '''
+
     def rotate_kick(self, robotx, roboty, goalx, goaly, angle):
         theta = angle_a_to_b(robotx, roboty, goalx, goaly)
 
@@ -315,10 +317,10 @@ class RobotComms(CommsToArduino):
         command += "kick 100 $"
         self.compose(command)
 
-
+'''
     def angle_a_to_b(self, ax, ay, bx, by):
         xdist = bx-ax;
-        ydist = by-ay;
+       ydist = by-ay;
 
         if(xdist>0):
             if(ydist>=0):
@@ -338,6 +340,36 @@ class RobotComms(CommsToArduino):
                     theta = 0;
 
         return theta;
+
+        '''
+        def move_and_grab(self, v1, v2):
+            angle = angle_a_to_b(v1, v2)
+            dist = dist(v1,v2)
+            command = ""
+
+            if angle >= 0 and <= 180:
+                command += "right " + angle + " $ "
+            else:
+                command += "left " + 360 - angle + " $ "
+
+            command += "forward " + dist - 5 " $ "
+            command += "open $"
+            command += "forward " + 5 " $ "
+            command += "close $"
+
+
+
+        def angle_a_to_b(self, v1, v2):
+            return math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
+
+        def dotproduct(v1, v2):
+            return sum((a*b) for a, b in zip(v1, v2))
+
+        def length(v):
+            return math.sqrt(dotproduct(v, v))
+
+        def dist(v1, v2):
+            return  math.hypot(v1.x - v2.x, v1.y - v2.y)
 
 
 if __name__ == "__main__":
