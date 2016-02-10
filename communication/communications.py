@@ -21,6 +21,9 @@ STORE = 7
 OPEN = 8
 CLOSE = 9
 
+# length to grabber from centre of robot
+LENGTHBUFFER = 12
+
 ERROR_CODES = ["0CF","0UC", "0IW"]
 
 RETURN_CODE = {
@@ -276,72 +279,11 @@ class RobotComms(CommsToArduino):
             command += "left " + str(360 - angle_remaining)
 
         self.compose(command)
-'''
-    def move_and_grab(self, ballx, bally, robotx, roboty, angle):
-        xdist = robotx - ballx
-        ydist = roboty - bally
-        sdist = hypot(xdist, ydist)
 
-        theta = 0
-        # Angle from north, to ball, to robot
-        theta = angle_a_to_b(ballx, bally, robotx, roboty)
 
-        rotate = 0;
-        #
-        # print("Theta = " + str(theta))
-        rotate = ((180 + theta) - angle) % 360
-        # print()
-        # print("Rotation = " + str(rotate))
-        # print("Move distance = " + str(sdist))
 
-        derror =  0
-        sdist += derror
 
-        command += "right " + str(rotate) + " $"
-        command += "forward " + str(sdist) + " $"
-        command += "grab 100 $"
-
-        self.compose(command)
-
-        '''
-
-    def rotate_kick(self, robotx, roboty, goalx, goaly, angle):
-        theta = angle_a_to_b(robotx, roboty, goalx, goaly)
-
-        if(angle > theta):
-            # print("Turning left " + str(angle-theta))
-            command += "left " +str(angle-theta) +" $"
-        else:
-            # print("Turning right " + str(theta-angle)
-            command ++ "right " +str(theta-angle) + " $"
-        command += "kick 100 $"
-        self.compose(command)
-
-'''
-    def angle_a_to_b(self, ax, ay, bx, by):
-        xdist = bx-ax;
-       ydist = by-ay;
-
-        if(xdist>0):
-            if(ydist>=0):
-                theta = 90 - degrees(atan(fabs(ydist/xdist)));
-            else:
-                theta = 90 + degrees(atan(fabs(ydist/xdist)));
-        else:
-            if(xdist<0):
-                if(ydist>=0):
-                    theta = 270 + degrees(atan(fabs(ydist/xdist)));
-                else:
-                    theta = 270 - degrees(atan(fabs(ydist/xdist)));
-            else:
-                if(ydist>=0):
-                    theta = 180;
-                else:
-                    theta = 0;
-
-        return theta;
-
-        '''
+        #rotate, move and grab
         def move_and_grab(self, v1, v2):
             angle = angle_a_to_b(v1, v2)
             dist = dist(v1,v2)
@@ -352,10 +294,24 @@ class RobotComms(CommsToArduino):
             else:
                 command += "left " + 360 - angle + " $ "
 
-            command += "forward " + dist - 5 " $ "
+            command += "forward " + dist - 5 - LENGTHBUFFER + " $ "
             command += "open $"
             command += "forward " + 5 " $ "
             command += "close $"
+            self.compose(command)
+
+        def rotate_kick(self, v1):
+            #angle between robot and goal
+            angle = angle_a_to_b(v1, (-320, 0))
+            command = ""
+
+            if angle >= 0 and <= 180:
+                command += "right " + angle + " $ "
+            else:
+                command += "left " + 360 - angle + " $ "
+
+            command += "kick 100 "
+            self.compose(command)
 
 
 
@@ -369,7 +325,7 @@ class RobotComms(CommsToArduino):
             return math.sqrt(dotproduct(v, v))
 
         def dist(v1, v2):
-            return  math.hypot(v1.x - v2.x, v1.y - v2.y)
+            return  math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
 
 if __name__ == "__main__":
