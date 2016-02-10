@@ -5,6 +5,11 @@ from time import sleep
 from threading import Thread
 from random import randint
 from math import *
+from vision.camera import Camera
+
+import sys
+from vision.G3VisionAPI import *
+
 
 # constants
 TEAM = 0
@@ -144,13 +149,15 @@ class RobotComms(CommsToArduino):
     wait_msg = None
 
     def __init__(self, port):
+        self.camera = Camera()
         self.write_thread = Thread(target=self.write_stream)
         self.read_thread = Thread(target=self.read_stream)
         self.read_thread.start()
         self.write_thread.start()
         super(RobotComms, self).__init__(port)
 
-    def close(self):
+    def gclose(self):
+        self.camera.close()
         self._close = True
         self.comn.close()
         self.queue.put("Robot Closed")
@@ -283,81 +290,90 @@ class RobotComms(CommsToArduino):
 
 
 
-        #rotate, move and grab
-        def move_and_grab(self):
+    #rotate, move and grab
+    def move_and_grab(self):
 
-            distance = 10
-            while(distance >=10):
-                # (ball_coordinates, robot_coordinates, robot_dir_vector) = getinfo()
-
-                v1 = robot_coordinates
-                v2 = ball_coordinates
-
-                theta = angle_a_to_b(v1,v2)
-                theta2 = angle_a_to_b(robot_dir_vector)
-
-                turn = math.degrees(theta2 - theta)
-                distance = dist(v1,v2)
-
-                if turn >0:
-                    command += "right " + str(angle) + " $"
-                else:
-                    command += "left " + str(abs(angle)) + " $"
-
-                command += "forward " + str(0.8*distance) + " $"
-
-            # ball is now sufficiently close to grab
-
-            # (ball_coordinates, robot_coordinates, robot_dir_vector) = getinfo()
+        distance = 10
+        while(distance >=10):
+            command = ""
+            (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
 
             v1 = robot_coordinates
             v2 = ball_coordinates
 
-            theta = angle_a_to_b(v1,v2)
-            theta2 = angle_a_to_b(robot_dir_vector)
+            theta = self.angle_a_to_b(v1,v2)
+            theta2 = self.angle_a_to_b(robot_dir_vector, (0.0, 0.0))
+            angle = theta2 - theta
 
             turn = math.degrees(theta2 - theta)
-            distance = dist(v1,v2)
+            distance = self.dist(v1,v2)
 
             if turn >0:
-                command += "right " + str(angle) + " $"
+                command += "right " + str(int(angle)) + " $"
             else:
-                command += "left " + str(abs(angle)) + " $"
+                command += "left " + str(abs(int(angle))) + " $"
 
-            command += "open $"
-            command += "forward " + str(distance) + " $"
-            command += "close $"
-
-            self.compose(commaned)
-
-        def rotate_kick(self):
-            # (ball_coordinates, robot_coordinates, robot_dir_vector) = getinfo()
-
-            v1 = robot_coordinates
-
-            #angle between robot and goal
-            theta = angle_a_to_b(v1, (-320*0.46, 0))
-            theta2 = angle_a_to_b(robot_dir_vector)
-
-            command = ""
-
-            if angle >= 0 and angle <= 180:
-                command += "right " + angle + " $ "
-            else:
-                command += "left " + 360 - angle + " $ "
-
-            command += "kick 100 "
+            command += "forward " + str(int(0.8*distance))
             self.compose(command)
 
+        # ball is now sufficiently close to grab
+
+        # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
+
+        v1 = robot_coordinates
+        v2 = ball_coordinates
+
+        theta = self.angle_a_to_b(v1,v2)
+        theta2 = self.angle_a_to_b(robot_dir_vector, (0.0,0.0))
+        angle = theta2 - theta
+
+        turn = math.degrees(theta2 - theta)
+        distance = self.dist(v1,v2)
+
+        if turn >0:
+            command += "right " + str(int(angle)) + " $"
+        else:
+            command += "left " + str(abs(int(angle))) + " $"
+
+        command += "open $"
+        command += "forward " + str(distance) + " $"
+        command += "close $"
+
+        print(command)
+        self.compose(command)
+
+    def rotate_kick(self):
+        (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
+
+        v1 = robot_coordinates
+
+        #angle between robot and goal
+        theta = self.angle_a_to_b(v1, (-320*0.46, 0.0))
+        theta2 = self.angle_a_to_b(robot_dir_vector, (1.0, 0.0))
+        angle = theta2 - theta
+        print(angle)
 
 
-        def angle_a_to_b(self, v1, v2):
-            return math.atan2((v1[1]-v2[1]), (v1[0], v2[0]))
-            #returns angle between vector v1-v2 and positive x axis
+        command = ""
+
+        if angle >= 0 and angle <= 180:
+            command += "right " + str(int(angle)) + " $ "
+        else:
+            command += "left " + str(int(360 - angle)) + " $ "
+
+        print(command)
+        command += "kick 100 "
+        self.compose(command)
 
 
-        def dist(v1, v2):
-            return  math.hypot(v1[0] - v2[0], v1[1] - v2[1])
+
+    def angle_a_to_b(self, v1, v2):
+        return math.atan2((v1[1]-v2[1]), (v1[0] - v2[0]))
+        #returns angle between vector v1-v2 and positive x axis
+
+
+    def dist(self, v1, v2):
+        return  math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
 
 if __name__ == "__main__":
