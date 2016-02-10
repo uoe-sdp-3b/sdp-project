@@ -293,53 +293,31 @@ class RobotComms(CommsToArduino):
     #rotate, move and grab
     def move_and_grab(self):
 
-        distance = 10
-        while(distance >=10):
-            command = ""
-            (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-
-            v1 = robot_coordinates
-            v2 = ball_coordinates
-
-            theta = self.angle_a_to_b(v1,v2)
-            theta2 = self.angle_a_to_b(robot_dir_vector, (0.0, 0.0))
-            angle = theta2 - theta
-
-            turn = math.degrees(theta2 - theta)
-            distance = self.dist(v1,v2)
-
-            if turn >0:
-                command += "right " + str(int(angle)) + " $"
-            else:
-                command += "left " + str(abs(int(angle))) + " $"
-
-            command += "forward " + str(int(0.8*distance))
-            self.compose(command)
-
-        # ball is now sufficiently close to grab
-
-        # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
+        #distance = 10
+        #while(distance >=10):
+        command = ""
+        (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
 
         v1 = robot_coordinates
         v2 = ball_coordinates
 
-        theta = self.angle_a_to_b(v1,v2)
-        theta2 = self.angle_a_to_b(robot_dir_vector, (0.0,0.0))
-        angle = theta2 - theta
+        turn = self.angle_a_to_b(v1,v2,robot_dir_vector)
 
-        turn = math.degrees(theta2 - theta)
         distance = self.dist(v1,v2)
 
-        if turn >0:
-            command += "right " + str(int(angle)) + " $"
+        if turn <0:
+            command += "right " + str(abs(int(angle))) + " $"
         else:
             command += "left " + str(abs(int(angle))) + " $"
 
-        command += "open $"
-        command += "forward " + str(distance) + " $"
-        command += "close $"
+        command += "forward " + str(0.9 * int(distance)) # * 0.8
+        self.compose(command)
 
-        print(command)
+
+        command += "open $"
+        command += "forward " + str(0.1 * int(distance)) + " $"
+        command += "stop"
+
         self.compose(command)
 
     def rotate_kick(self):
@@ -347,19 +325,14 @@ class RobotComms(CommsToArduino):
 
         v1 = robot_coordinates
 
-        #angle between robot and goal
-        theta = self.angle_a_to_b(v1, (-320*0.46, 0.0))
-        theta2 = self.angle_a_to_b(robot_dir_vector, (1.0, 0.0))
-        angle = theta2 - theta
-        print(angle)
-
+        turn = self.angle_a_to_b(v1,(-320*0.46, 0.0),robot_dir_vector)
 
         command = ""
 
-        if angle >= 0 and angle <= 180:
-            command += "right " + str(int(angle)) + " $ "
+        if turn <0:
+            command += "right " + str(abs(int(angle))) + " $"
         else:
-            command += "left " + str(int(360 - angle)) + " $ "
+            command += "left " + str(abs(int(angle))) + " $"
 
         print(command)
         command += "kick 100 "
@@ -367,10 +340,14 @@ class RobotComms(CommsToArduino):
 
 
 
-    def angle_a_to_b(self, v1, v2):
-        return math.atan2((v1[1]-v2[1]), (v1[0] - v2[0]))
-        #returns angle between vector v1-v2 and positive x axis
-
+    def angle_between(self, p1, p2):
+      ang1 = math.atan2(*p1[::-1])
+      ang2 = math.atan2(*p2[::-1])
+      return math.degrees((ang1 - ang2))
+          
+    def angle_a_to_b(self, r, b, dirv):
+      d = (b[0] - r[0], b[1] - r[1])
+      return self.angle_between(d, dirv)
 
     def dist(self, v1, v2):
         return  math.hypot(v1[0] - v2[0], v1[1] - v2[1])
