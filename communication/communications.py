@@ -306,9 +306,9 @@ class RobotComms(CommsToArduino):
         distance = self.dist(v1,v2)
 
         if turn <0:
-            command += "right " + str(abs(int(angle))) + " $"
+            command += "right " + str(abs(int(turn))) + " $"
         else:
-            command += "left " + str(abs(int(angle))) + " $"
+            command += "left " + str(abs(int(turn))) + " $"
 
         command += "forward " + str(0.9 * int(distance)) # * 0.8
         self.compose(command)
@@ -330,9 +330,9 @@ class RobotComms(CommsToArduino):
         command = ""
 
         if turn <0:
-            command += "right " + str(abs(int(angle))) + " $"
+            command += "right " + str(abs(int(turn))) + " $"
         else:
-            command += "left " + str(abs(int(angle))) + " $"
+            command += "left " + str(abs(int(turn))) + " $"
 
         print(command)
         command += "kick 100 "
