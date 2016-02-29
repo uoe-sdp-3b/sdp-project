@@ -5,10 +5,9 @@ from time import sleep
 from threading import Thread
 from random import randint
 from math import *
-from vision.camera import Camera
 
 import sys
-from vision.G3VisionAPI import *
+# from vision.G3VisionAPI import *
 
 
 # constants
@@ -148,8 +147,8 @@ class RobotComms(CommsToArduino):
     # the message to wait for, or None if we aren't to wait
     wait_msg = None
 
-    def __init__(self, port):
-        self.camera = Camera()
+    def __init__(self, port, camera):
+        self.camera = camera
         self.write_thread = Thread(target=self.write_stream)
         self.read_thread = Thread(target=self.read_stream)
         self.read_thread.start()

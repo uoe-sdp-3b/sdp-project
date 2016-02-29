@@ -1,5 +1,6 @@
 #!/usr/bin/env python2.7
 import logging
+from vision.camera import Camera
 from planning.world import WorldApi
 from plan.planner import Planner
 from communication.communications import RobotComms
@@ -14,6 +15,9 @@ def parse_args():
     parser.add_argument("-s", "--serial",
                         help="Serial Port for RobotComms",
                         default="/dev/ttyACM0")
+    parser.add_argument("--calibration",
+                        help="Calibration config file for the camera",
+                        default="./config/undistort_pitch0.json")
     parser.add_argument("-v", "--verbose",
                         help="Run in debug mode",
                         action='store_true')
@@ -26,9 +30,16 @@ def main():
 
     if args.verbose:
         log.setLevel(logging.DEBUG)
+
+    log.debug("Starting up...")
+    camera = Camera(config=args.calibration)
+    log.debug("Camera configured")
+    # robot = RobotComms(args.serial, camera)
+    robot = None
+    log.debug("Robot Configured")
+    world = WorldApi(debug=args.verbose)
+
     try:
-        robot = RobotComms(args.serial)
-        world = WorldApi(debug=args.verbose)
         pl = Planner(world, robot=robot, debug=args.verbose)
         log.debug("Test move and grab")
         pl.move_and_grab()
