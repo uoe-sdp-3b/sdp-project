@@ -1,6 +1,8 @@
 import math
+import logging
 
-
+logging.basicConfig(format='[%(asctime)s]  %(message)s', datefmt='%I:%M:%S')
+log = logging.getLogger(__name__)
 # STATUS:
 # - planner does correct calculations
 # - planner does optimal calculations
@@ -20,7 +22,7 @@ class Planner(object):
         # Link to comms
         # Link to vision
 
-        print("This has begun")
+        log.debug("This has begun")
 
     # MILESTONE 1 planning task
 
@@ -72,7 +74,7 @@ class Planner(object):
         command = ""
         # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
         (ball_coordinates, robot_coordinates, robot_dir_vector) = ((0, 0), (75, 75), (0, -1))
-        print("expected turn - %d, expected dist - %d" % (-90, 226))
+        log.debug("expected turn - %d, expected dist - %d" % (-90, 226))
 
         v1 = robot_coordinates
         v2 = ball_coordinates
@@ -89,13 +91,13 @@ class Planner(object):
         command += "open $"
         command += "forward " + str(int(math.ceil(0.1 * distance))) + " $"
         command += "stop"
-        print(command)
+        log.debug(command)
         # self.compose(command)
 
     def rotate_kick(self):
         # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
         (_, robot_coordinates, robot_dir_vector) = ((160, 160), (0, 320*0.46), (0, 1))
-        print("expected turn - %d?" % 45)
+        log.debug("expected turn - %d?" % 45)
 
         v1 = robot_coordinates
 
@@ -106,7 +108,7 @@ class Planner(object):
         command += self.turn_command(turn) + " $"
 
         command += "kick 100"
-        print(command)
+        log.debug(command)
         # self.compose(command)
 
     # MILESTONE 3 planning tasks
@@ -188,7 +190,7 @@ class Planner(object):
         # !! maybe can wait a bit here
         # CHASE AND GET BALL FUNCTION
 
-        print(command)
+        log.debug(command)
         # self.compose(command)
 
     # PART 2
@@ -222,7 +224,7 @@ class Planner(object):
         # comms.compose("kick 100")
 
 
-        print(command)
+        log.debug(command)
         # self.compose(command)
 
     # PART 3
@@ -304,9 +306,21 @@ class Planner(object):
         return command
 
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose",
+                        help="Run in debug mode",
+                        action='store_true')
+
+    return parser.parse_args()
+
 if __name__ == "__main__":
+    args = parse_args()
+    if args.verbose:
+        log.setLevel(logging.DEBUG)
     pl = Planner()
-    print("Test move and grab")
+    log.debug("Test move and grab")
     pl.move_and_grab()
-    print("Test rotate kick")
+    log.debug("Test rotate kick")
     pl.rotate_kick()
