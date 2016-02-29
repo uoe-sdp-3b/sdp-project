@@ -24,7 +24,7 @@ def main():
     if args.verbose:
         log.setLevel(logging.DEBUG)
     try:
-        robot = RobotComms()
+        robot = RobotComms('/dev/ttyACM0')
         world = WorldApi(debug=args.verbose)
         pl = Planner(world, robot=robot, debug=args.verbose)
         log.debug("Test move and grab")
