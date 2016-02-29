@@ -1,7 +1,7 @@
 import math
 import logging
+from planning.world import WorldApi
 
-logging.basicConfig(format='[%(asctime)s]  %(message)s', datefmt='%I:%M:%S')
 log = logging.getLogger(__name__)
 # STATUS:
 # - planner does correct calculations
@@ -16,15 +16,25 @@ log = logging.getLogger(__name__)
 # - make planner run specifically when we need it (possibly in the backgroud?)
 
 class Planner(object):
-    def __init__(self):
+    def __init__(self, world, debug=False):
+        if debug:
+            log.setLevel(logging.DEBUG)
         # TODO:
         # Add:
         # Link to comms
         # Link to vision
+        self.world = world
 
-        log.debug("This has begun")
+        log.debug("System starting")
 
     # MILESTONE 1 planning task
+
+    def close(self):
+        """
+        Gracefully close everything that the planner depends on
+        """
+        log.debug("Cleaning up")
+        self.world.close()
 
     # x - forward distance
     # y - right distance
@@ -306,21 +316,3 @@ class Planner(object):
         return command
 
 
-def parse_args():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose",
-                        help="Run in debug mode",
-                        action='store_true')
-
-    return parser.parse_args()
-
-if __name__ == "__main__":
-    args = parse_args()
-    if args.verbose:
-        log.setLevel(logging.DEBUG)
-    pl = Planner()
-    log.debug("Test move and grab")
-    pl.move_and_grab()
-    log.debug("Test rotate kick")
-    pl.rotate_kick()
