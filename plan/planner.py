@@ -16,18 +16,19 @@ log = logging.getLogger(__name__)
 # - make planner run specifically when we need it (possibly in the backgroud?)
 
 class Planner(object):
-    def __init__(self, world, robot=None, debug=False):
+    def __init__(self, world, our_color, robot, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
-        # TODO:
-        # Add:
-        # Link to comms
-        # Link to vision
+            
         self.world = world
-        if not robot:
-            log.error("Please Instantiate with a Robot Instance!")
-
         self.robot = robot
+        
+        if our_color == 'green':
+            self.us = 'green_ally'
+            self.ally = 'pink_ally'
+        else:
+            self.us = 'pink_ally'
+            self.ally = 'green_ally'
 
         log.debug("System starting")
 
@@ -134,8 +135,9 @@ class Planner(object):
             command = ""
             # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
 
-            v1 = robot_coordinates
-            v2 = ball_coordinates
+            v1 =  self.world[self.us]["location"]      # our robot's coordinates
+            v2 =  self.world["ball_center"] # ball's coordinates
+            robot_dir_vector = self.world[self.us]["orientation"]
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $"
@@ -152,14 +154,14 @@ class Planner(object):
                 # If *I can't*
                 # then sleep(5)
 
-            command += "open $"
-            command += "forward " + str(int(math.ceil(distance))) + " $"
-            command += "stop"
-            # self.compose(command)
+        command += "open $"
+        command += "forward " + str(int(math.ceil(distance))) + " $"
+        command += "stop"
+        # self.compose(command)
 
-            # check with IR if ball got.
-            # IF NOT GOT:
-            # get_ball()
+        # check with IR if ball got.
+        # IF NOT GOT:
+        # get_ball()
 
     def get_to(self, location):
         while True:
