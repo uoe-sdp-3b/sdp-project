@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # - make planner run specifically when we need it (possibly in the backgroud?)
 
 class Planner(object):
-    def __init__(self, world, debug=False):
+    def __init__(self, world, robot=None, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
         # TODO:
@@ -24,6 +24,10 @@ class Planner(object):
         # Link to comms
         # Link to vision
         self.world = world
+        if not robot:
+            log.error("Please Instantiate with a Robot Instance!")
+
+        self.robot = robot
 
         log.debug("System starting")
 
