@@ -11,6 +11,9 @@ log = logging.getLogger(__name__)
 def parse_args():
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--serial",
+                        help="Serial Port for RobotComms",
+                        default="/dev/ttyACM0")
     parser.add_argument("-v", "--verbose",
                         help="Run in debug mode",
                         action='store_true')
@@ -24,7 +27,7 @@ def main():
     if args.verbose:
         log.setLevel(logging.DEBUG)
     try:
-        robot = RobotComms('/dev/ttyACM0')
+        robot = RobotComms(args.serial)
         world = WorldApi(debug=args.verbose)
         pl = Planner(world, robot=robot, debug=args.verbose)
         log.debug("Test move and grab")
