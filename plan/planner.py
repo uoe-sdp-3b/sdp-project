@@ -15,14 +15,16 @@ log = logging.getLogger(__name__)
 # - make planner conform with milestone 3 requirements
 # - make planner run specifically when we need it (possibly in the backgroud?)
 
+
 class Planner(object):
     def __init__(self, world, our_color, robot, debug=False):
+        log.debug("Initialising Planner")
         if debug:
             log.setLevel(logging.DEBUG)
-            
+
         self.world = world
         self.robot = robot
-        
+
         if our_color == 'green':
             self.us = 'green_ally'
             self.ally = 'pink_ally'
@@ -149,26 +151,26 @@ class Planner(object):
             else:
                 command += "forward " + str(int(math.ceil(0.7 * distance)))  # * 0.8
                 robot.compose(command)
-                
+
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 self.wait_for_robot_response()
                 self.clear_robot_responses()
-                
+
                 # Alternative: sleep(5)
-        
+
         command = ""
         command += "open $"
         command += "forward " + str(int(math.ceil(distance))) + " $"
         command += "stop"
-        
-        robot.compose(command)  
-        
+
+        robot.compose(command)
+
         self.wait_for_robot_response()
-        
+
         # !! Should check if ball was got with IR (or vision)
         # !! Call get_ball() recursively if not
-        
+
         self.clear_robot_responses()
 
     def get_to(self, location):
@@ -197,21 +199,21 @@ class Planner(object):
                 self.clear_robot_responses()
 
         command = "forward " + str(int(math.ceil(distance)))
-        robot.compose(command)  
-        
+        robot.compose(command)
+
         self.wait_for_robot_response()
         self.clear_robot_responses()
 
     # PART 1
     def receive_pass(self):
-    
+
         v1 =  self.world[self.us]["location"]      # our robot's coordinates
         v2 =  self.world["ball_center"] # ball's coordinates
         robot_dir_vector = self.world[self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
         command = self.turn_command(turn)
-        
+
         self.robot.compose(command)
 
         # !! maybe can wait a bit here
@@ -221,8 +223,8 @@ class Planner(object):
 
     # PART 2
     def receive_turn_pass(self):
-    
-        v1 =  self.world[self.us]["location"]s
+
+        v1 =  self.world[self.us]["location"]
         v2 =  self.world["ball_center"]
         robot_dir_vector = self.world[self.us]["orientation"]
 
@@ -238,14 +240,14 @@ class Planner(object):
         robot_dir_vector = self.world[self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-        
+
         # !! can use one command instead
-        
+
         command = ""
         command += self.turn_command(turn) + " $ "
         command += self.turn_command("stop") + " $ "
         command += "kick 100"
-        
+
         self.robot.compose(command)
 
         log.debug(command)
@@ -256,9 +258,9 @@ class Planner(object):
         robot_coordinates =  self.world[self.us]["location"]
         green_opp = self.world["green_opponent"]["location"]
         pink_opp = self.world["pink_opponent"]["location"]
-        
+
         ball_coordinates =  self.world["ball_center"]
-        
+
         # Choose the opponent which is not near the ball
         if self.dist(ball_coordinates, green_opp) > self.dist(ball_coordinates, pink_opp):
             other_bot = green_opp
@@ -269,7 +271,7 @@ class Planner(object):
         # y = kx + m
 
         # k = (y2-y1) / (x2 - x1)
-        k = (ball_coordinates[1] - other_bot[1) / (ball_coordinates[0] - other_bot[0])
+        k = (ball_coordinates[1] - other_bot[1]) / (ball_coordinates[0] - other_bot[0])
 
         # m = y - kx
         m = other_bot[1] - k * other_bot[0]
@@ -286,17 +288,17 @@ class Planner(object):
         # !! can change to robot seeking ball within confined defence area
 
         (enemy_bot, robot_coordinates) = ( (320*0.46,0), (-40,100), (40,-100), (1,0) )
-        
+
         robot_coordinates =  self.world[self.us]["location"]
         green_opp = self.world["green_opponent"]["location"]
         pink_opp = self.world["pink_opponent"]["location"]
-        
+
         # !! Not sure if this works
         if green_opp is not None:
             enemy_bot = green_opp
         else:
             enemy_bot = pink_opp
-        
+
         goal_center = (320*0.46,0)
 
         # Solving geometric problem with x,y axes for i_location
@@ -326,11 +328,11 @@ class Planner(object):
 
     def dist(self, v1, v2):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
-        
+
     def wait_for_robot_response():
         while(self.robot.queue.empty()):
             pass
-    
+
     def clear_robot_responses():
         # Empty response queue
         while(not self.robot.queue.empty()):
@@ -351,5 +353,3 @@ class Planner(object):
                 command = "right " + str(360 - abs(int(turn)))
 
         return command
-
-
