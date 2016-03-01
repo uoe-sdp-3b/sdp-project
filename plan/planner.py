@@ -291,11 +291,16 @@ class Planner(object):
 
     def dist(self, v1, v2):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
-
+        
     def wait_for_robot_response(self):
-        while(self.robot.queue.empty()):
-            pass
-
+        while(True):
+            while(self.robot.queue.empty()):
+                pass
+            response = self.robot.queue.get()
+            if response[-1] == '1':
+                break
+        
+    
     def clear_robot_responses(self):
         # Empty response queue
         while(not self.robot.queue.empty()):
