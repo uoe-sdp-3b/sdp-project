@@ -5,7 +5,6 @@ from time import sleep
 from threading import Thread
 from random import randint
 from math import *
-
 import sys
 # from vision.G3VisionAPI import *
 
@@ -20,27 +19,21 @@ BACKWARD = 2
 LEFT = 3
 RIGHT = 4
 KICK = 5
-GRAB = 6
-STORE = 7
-OPEN = 8
-CLOSE = 9
+# GRAB = 6
+# STORE = 7
+OPEN_GRABBER = 6
+CLOSE_GRABBER = 7
+
+READ_COMPASS = 8
+READ_INFRARED = 9
+READ_SONAR = 10
+SCALE_LEFT = 11
+SCALE_RIGHT = 12
+
+PING = 14
 
 # length to grabber from centre of robot
 LENGTHBUFFER = 12
-
-ERROR_CODES = ["0CF","0UC", "0IW"]
-
-RETURN_CODE = {
-    "STOP": "0RS",
-    "FORWARD": "0RF",
-    "BACKWARD": "0RB",
-    "LEFT": "0RL",
-    "RIGHT": "0RR",
-    "KICK": "0RK",
-    "GRAB": "0RG",
-    "OPEN": "0RO",
-    "CLOSE": "0RC"
-}
 
 
 class CommsToArduino(object):
@@ -49,21 +42,17 @@ class CommsToArduino(object):
     internal_queue = Queue()
     write_queue = Queue()
 
+    ready = True
+    seqNo = 0
+
     # these should be hard-coded, the values should not change
-    def __init__(self,
-                 port="/dev/ttyACM0",
-                 rate=115200,
-                 timeout=0,
-                 connected=False):
+    def __init__(self, port="/dev/ttyACM0", rate=115200, timeout=0, connected=False):
         self.isConnected = connected
         self.port = port
         self.comn = None  # updated when we establish the connection
         self.rate = rate
         self.timeout = timeout
         self.connect()
-
-    seqNo = False
-    ready = True
 
     # this function establishes the connection between the devices
     # and updates the boolean variable isConnected
@@ -85,13 +74,15 @@ class CommsToArduino(object):
 
         return (arg + opcode) % 10
 
+
+    # HERE: add timeout, ACK_0, ACK_1, NAK(corr)
+    # need to get from response: corr: w; seqNo: x; done: y; unregonized_command = z;
     def _write(self, sig, opcode, arg):
         """
         Sends the code to the Arduino
         """
-        checksum = self.create_checksum(arg, opcode)
-        self.seqNo = not self.seqNo
-        opcode_string = "%d%d%03d%d%d\r" % (sig, opcode, arg, checksum, self.seqNo)
+        checksum = self.create_checksum(arg, opcode)    
+        opcode_string = "%02d%03d%d%d\r" % (opcode, arg, checksum, self.seqNo)
         # Ensure that internal queue is clear initially
         self.internal_queue.queue.clear()
         # Send command
@@ -99,7 +90,8 @@ class CommsToArduino(object):
 
         # Keep sending command every 0.25s until you get a received OK response
         sent_successfully = False
-        while (not sent_successfully):
+        completed_instruction = False
+        while (not completed_instruction):
             sleep(0.25)
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
@@ -107,12 +99,37 @@ class CommsToArduino(object):
                 # Check if success
                 # (not checksum fail or unrecognized or bad command length)
                 # Note: would be better to have a specific response upon success
-                if response not in ERROR_CODES and len(response) == 3:
-                    sent_successfully = True
+                corr = ""
+                done = ""
+                rseqNo = 0
 
-            if (not sent_successfully):
-                # Resend command (because no response was ever got)
-                self.to_robot(opcode_string)
+                if(response == "0001"):
+                    #unregonized command (this should not happen)
+                    return
+
+                if(len(response) >= 3):
+                    corr = response[0]
+                    done = response[2]
+
+                    if(response[1] == "1"):
+                        rseqNo = 1
+
+                if(not sent_successfully):
+
+                    if(corr == "0" and self.seqNo == rseqNo and done == "0"):
+                        sent_successfully = True
+
+                    else:  
+                        self.to_robot(opcode_string)
+
+                else:
+
+                    if(corr == "0" and self.seqNo == rseqNo and done == "1"):
+                        completed_instruction = True
+                        if(self.seqNo == 0):
+                            self.seqNo = 1
+                        else:
+                            self.seqNo = 0
 
         return
 
@@ -120,7 +137,7 @@ class CommsToArduino(object):
         # Send command
         self.comn.write(message)
 
-    def write(self, sig, opcode, arg, ret="unknown"):
+    def write(self, sig, opcode, arg):
         """
         Public interface for sending opcodes to the robot
         """
@@ -129,7 +146,6 @@ class CommsToArduino(object):
             self.ready = False
 
             self.write_queue.put({
-                'return': ret,
                 'sig': sig,
                 'opcode': opcode,
                 'arg': arg,
@@ -147,8 +163,7 @@ class RobotComms(CommsToArduino):
     # the message to wait for, or None if we aren't to wait
     wait_msg = None
 
-    def __init__(self, port, camera):
-        self.camera = camera
+    def __init__(self, port):
         self.write_thread = Thread(target=self.write_stream)
         self.read_thread = Thread(target=self.read_stream)
         self.read_thread.start()
@@ -156,7 +171,6 @@ class RobotComms(CommsToArduino):
         super(RobotComms, self).__init__(port)
 
     def gclose(self):
-        self.camera.close()
         self._close = True
         self.comn.close()
         self.queue.put("Robot Closed")
@@ -186,25 +200,25 @@ class RobotComms(CommsToArduino):
                     self.internal_queue.put(line)
 
     def stop(self):
-        self.write(TEAM, STOP, 0, ret=RETURN_CODE["STOP"])
+        self.write(TEAM, STOP, 0)
 
     def forward(self, speed):
-        self.write(TEAM, FORWARD, int(speed), ret=RETURN_CODE["FORWARD"])
+        self.write(TEAM, FORWARD, int(speed))
 
     def backward(self, speed):
-        self.write(TEAM, BACKWARD, int(speed), ret=RETURN_CODE["BACKWARD"])
+        self.write(TEAM, BACKWARD, int(speed))
 
     def left(self, speed):
-        self.write(TEAM, LEFT, int(speed), ret=RETURN_CODE["LEFT"])
+        self.write(TEAM, LEFT, int(speed))
 
     def right(self, speed):
-        self.write(TEAM, RIGHT, int(speed), ret=RETURN_CODE["RIGHT"])
+        self.write(TEAM, RIGHT, int(speed))
 
     def kick(self, speed):
-        self.write(TEAM, KICK, int(speed), ret=RETURN_CODE["KICK"])
+        self.write(TEAM, KICK, int(speed))
 
     def grab(self, speed):
-        self.write(TEAM, GRAB, int(speed), ret=RETURN_CODE["GRAB"])
+        self.write(TEAM, GRAB, int(speed))
 
     def store(self, file_path, frequency):
         with open(file_path, 'rb') as f:
@@ -221,11 +235,35 @@ class RobotComms(CommsToArduino):
                 sleep(1 / float(frequency))  # can be changed
 
 
-    def open(self):
-        self.write(TEAM, OPEN, 80, ret = RETURN_CODE["OPEN"])
+    def open_grabber(self):
+        self.write(TEAM, OPEN, 80)
 
-    def close(self):
-        self.write(TEAM, CLOSE, 80, ret = RETURN_CODE["CLOSE"])
+    def close_grabber(self):
+        self.write(TEAM, CLOSE, 80)
+
+
+    def read_compass(self):
+        self.write(TEAM, READ_COMPASS, 0)
+
+    def read_infrared(self):
+        self.write(TEAM, READ_INFRARED, 0)
+
+    def read_sonar(self):
+        self.write(TEAM, READ_SONAR, 0)
+
+    def scale_left(self, scale):
+        self.write(TEAM, SCALE_LEFT, int(scale))
+
+    def scale_right(self, scale):
+        self.write(TEAM, SCALE_RIGHT, int(scale))
+
+    def ping(self):
+        self.write(TEAM, PING, 0)
+
+    def testcomms(self):
+        for x in range(0,400):
+            self.write(TEAM,PING,0)
+            print x
 
 
     def c(self, *args):
@@ -248,108 +286,6 @@ class RobotComms(CommsToArduino):
             except TypeError as e:
                 self.queue.put(str(e))
 
-    # x - forward distance
-    # y - right distance
-    # z angle to the right of x
-    # Note: this function is perfect for validating if communications work
-    #       without flaws
-    def xyzmove(self, x, y, z):
-        x = int(x)
-        y = int(y)
-        z = int(z)
-
-        command = ""
-
-        if x > 0:
-            command += "forward " + str(abs(x)) + " $ stop $ "
-        elif x < 0:
-            command += "backward " + str(abs(x)) + " $ stop $ "
-
-        total_turn = 0
-        turn = 90
-
-        if y > 0:
-            total_turn += turn
-            command += "right " + str(turn) + " $ "
-            command += "forward " + str(abs(y)) + " $ stop $ "
-        elif y < 0:
-            total_turn -= turn
-            command += "left " + str(turn) + " $ "
-            command += "forward " + str(abs(y)) + " $ stop $ "
-        angle_remaining = (z - total_turn) % 360
-
-        # Mod 360 to avoid treachery
-        if angle_remaining <= 180:
-            command += "right " + str(angle_remaining)
-        else:
-            command += "left " + str(360 - angle_remaining)
-
-        self.compose(command)
-
-
-
-
-    #rotate, move and grab
-    def move_and_grab(self):
-
-        #distance = 10
-        #while(distance >=10):
-        command = ""
-        (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-
-        v1 = robot_coordinates
-        v2 = ball_coordinates
-
-        turn = self.angle_a_to_b(v1,v2,robot_dir_vector)
-
-        distance = self.dist(v1,v2)
-
-        if turn <0:
-            command += "right " + str(abs(int(turn))) + " $"
-        else:
-            command += "left " + str(abs(int(turn))) + " $"
-
-        command += "forward " + str(0.9 * int(distance)) # * 0.8
-        self.compose(command)
-
-
-        command += "open $"
-        command += "forward " + str(0.1 * int(distance)) + " $"
-        command += "stop"
-
-        self.compose(command)
-
-    def rotate_kick(self):
-        (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-
-        v1 = robot_coordinates
-
-        turn = self.angle_a_to_b(v1,(-320*0.46, 0.0),robot_dir_vector)
-
-        command = ""
-
-        if turn <0:
-            command += "right " + str(abs(int(turn))) + " $"
-        else:
-            command += "left " + str(abs(int(turn))) + " $"
-
-        print(command)
-        command += "kick 100 "
-        self.compose(command)
-
-
-
-    def angle_between(self, p1, p2):
-      ang1 = math.atan2(*p1[::-1])
-      ang2 = math.atan2(*p2[::-1])
-      return math.degrees((ang1 - ang2))
-          
-    def angle_a_to_b(self, r, b, dirv):
-      d = (b[0] - r[0], b[1] - r[1])
-      return self.angle_between(d, dirv)
-
-    def dist(self, v1, v2):
-        return  math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
 
 if __name__ == "__main__":
