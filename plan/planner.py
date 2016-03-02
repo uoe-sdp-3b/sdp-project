@@ -97,9 +97,14 @@ class Planner(object):
 
             log.debug(">>>")
             log.debug(world)
+            
+
             v1 =  world['ally'][self.us]["center"]      # our robot's coordinates
             v2 =  world["ball_center"] # ball's coordinates
-            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
+
+            if v1 is None or v2 is None or robot_dir_vector is None:
+                continue            
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $ "
@@ -152,10 +157,13 @@ class Planner(object):
         while True:
             world = self.world()
             command = ""
-
+            
             v1 =  world['ally'][self.us]["center"] # our robot's coordinates
             v2 =  location
             robot_dir_vector = world['ally'][self.us]["orientation"]
+            
+            if v1 is None or v2 is None or robot_dir_vector is None:
+                continue
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $"
@@ -181,16 +189,20 @@ class Planner(object):
 
     # PART 1
     def receive_pass(self):
+        
+        try:
+            v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
+            v2 =  self.world()["ball_center"] # ball's coordinates
+            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+        
 
-        v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
-        v2 =  self.world()["ball_center"] # ball's coordinates
-        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+            turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+            command = self.turn_command(turn)
 
-        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-        command = self.turn_command(turn)
-
-        self.robot.compose(command)
-
+            self.robot.compose(command)
+        except:
+            print("exception in receive pass")
+        
         # !! maybe can wait a bit here
         self.get_ball()
 
@@ -203,7 +215,8 @@ class Planner(object):
             v1 =  world['ally'][self.us]["center"]
             v2 =  world['ally'][self.ally]["center"]
             robot_dir_vector = world['ally'][self.us]["orientation"]
-
+            
+            
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
             # !! can use one command instead
@@ -220,26 +233,30 @@ class Planner(object):
     # PART 2
     def receive_turn_pass(self):
 
-        world = self.world()
-        v1 =  world['ally'][self.us]["center"]
-        v2 =  world["ball_center"]
-        robot_dir_vector = world['ally'][self.us]["orientation"]
+        # world = self.world()
+        # v1 =  world['ally'][self.us]["center"]
+        # v2 =  world["ball_center"]
+        # robot_dir_vector = world['ally'][self.us]["orientation"]
+        
 
-        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+        # turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
-        self.robot.compose(self.turn_command(turn))
+        # self.robot.compose(self.turn_command(turn))
 
-        time.sleep(2)
+        # time.sleep(2)
 
         # !! maybe can wait a bit here
         self.get_ball()
 
         def turn_to_teammate():
-            world = self.world()
-            print(world['ally'])
-            v1 =  world['ally'][self.us]["center"]
-            v2 =  world['ally'][self.ally]["center"]
-            robot_dir_vector = world['ally'][self.us]["orientation"]
+            while True:
+                world = self.world()
+                v1 =  world['ally'][self.us]["center"]
+                v2 =  world['ally'][self.ally]["center"]
+                robot_dir_vector = world['ally'][self.us]["orientation"]
+                
+                if v1 is not None and v2 is not None and robot_dir_vector is not None:
+                    break
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
@@ -250,7 +267,6 @@ class Planner(object):
             self.robot.compose(command)
 
         turn_to_teammate()
-        turn_to_teammate()
 
         self.robot.compose("kick 100")
 
@@ -258,11 +274,18 @@ class Planner(object):
     # PART 3
     def intercept(self):
         # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-        robot_coordinates =  self.world()['ally'][self.us]["center"]
-        green_opp = self.world()['enemy']["green"]["center"]
-        pink_opp = self.world()['enemy']["pink"]["center"]
+        while True:
+            world = self.world()
+            robot_coordinates =  world['ally'][self.us]["center"]
+            green_opp = world['enemy']["green"]["center"]
+            pink_opp = world['enemy']["pink"]["center"]
 
-        ball_coordinates =  self.world()["ball_center"]
+            ball_coordinates =  self.world()["ball_center"]
+            
+            if robot_coordinates is not None and green_opp is not None and pink_opp is not None and ball_coordinates is not None:
+                break
+        
+        
 
         # Choose the opponent which is not near the ball
         if self.dist(ball_coordinates, green_opp) > self.dist(ball_coordinates, pink_opp):
@@ -289,12 +312,14 @@ class Planner(object):
     def defend(self):
         # !! this is simplest possible strategy
         # !! can change to robot seeking ball within confined defence area
-
-        (enemy_bot, robot_coordinates) = ( (320*0.46,0), (-40,100), (40,-100), (1,0) )
-
-        robot_coordinates =  self.world()['ally'][self.us]["center"]
-        green_opp = self.world()['enemy']["green"]["center"]
-        pink_opp = self.world()['enemy']["pink"]["center"]
+        while True:
+            world = self.world()
+            robot_coordinates =  world['ally'][self.us]["center"]
+            green_opp = world['enemy']["green"]["center"]
+            pink_opp = world['enemy']["pink"]["center"]
+            
+            if robot_coordinates is not None and (green_opp is not None or pink_opp is not None):
+                break
 
         # !! Not sure if this works
         if green_opp is not None:
