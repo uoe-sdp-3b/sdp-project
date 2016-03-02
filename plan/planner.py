@@ -1,5 +1,6 @@
 import math
 import logging
+import time
 
 log = logging.getLogger(__name__)
 # STATUS:
@@ -85,78 +86,92 @@ class Planner(object):
     # CORE functions
 
     def get_ball(self):
-        if not self.world():
+        world = self.world()
+        if not world:
             return
 
         self.clear_robot_responses()
         while True:
+            world = self.world()
             command = ""
 
-            v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
-            v2 =  self.world()["ball_center"] # ball's coordinates
+            log.debug(">>>")
+            log.debug(world)
+            v1 =  world['ally'][self.us]["center"]      # our robot's coordinates
+            v2 =  world["ball_center"] # ball's coordinates
             robot_dir_vector = self.world()['ally'][self.us]["orientation"]
-            log.debug(v1)
-            log.debug(v2)
-            log.debug(robot_dir_vector)
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-            command += self.turn_command(turn) + " $"
+            command += self.turn_command(turn) + " $ stop $ "
 
             distance = self.dist(v1, v2)
+            print(distance)
 
-            if distance <= 10:
+            if distance <= 80:
+                if distance < 30:
+                    self.robot.compose("backward 10")
                 break
             else:
-                command += "forward " + str(int(math.ceil(0.7 * distance)))  # * 0.8
+                command += " forward " + str(int(0.25 * distance))  # * 0.8
+                self.clear_robot_responses()
                 self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
-                self.wait_for_robot_response()
+                # self.wait_for_robot_response()
+                time.sleep(5)
                 self.clear_robot_responses()
 
                 # Alternative: sleep(5)
 
         command = ""
-        command += "open $"
-        command += "forward " + str(int(math.ceil(distance))) + " $"
-        command += "stop"
+        command += self.turn_command(turn) + " $ stop $"
+        command += "open_grabber $"
+        command += "forward " + str(int(0.48 * math.ceil(distance))) + " $"
+        command += "close_grabber"
 
         self.robot.compose(command)
 
         self.wait_for_robot_response()
 
-        # !! Should check if ball was got with IR (or vision)
-        # !! Call get_ball() recursively if not
-
         self.clear_robot_responses()
+        self.robot.compose("read_infrared")
+
+        if not self.ball_caught():
+            print "Trying again"
+            self.get_ball()
+
+
 
     def get_to(self, location):
-        if not self.world():
+        world = self.world()
+        if not world:
             return
 
         self.clear_robot_responses()
         while True:
+            world = self.world()
             command = ""
 
-            v1 =  self.world()['ally'][self.us]["center"] # our robot's coordinates
+            v1 =  world['ally'][self.us]["center"] # our robot's coordinates
             v2 =  location
-            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-            command += self.turn_command(turn) + " $"
+            command += self.turn_command(turn) + " $ stop $"
 
             distance = self.dist(v1, v2)
 
-            if distance <= 10:
+            if distance <= 40:
                 break
             else:
-                command += "forward " + str(int(math.ceil(0.7 * distance)))  # * 0.8
+                command += "forward " + str(int(0.30 * distance))  # * 0.8
                 self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
-                self.wait_for_robot_response()
+                # self.wait_for_robot_response()
+                time.sleep(4)
                 self.clear_robot_responses()
 
         self.robot.compose(command)
@@ -180,34 +195,64 @@ class Planner(object):
         self.get_ball()
 
 
+    def test(self):
+        self.get_ball()
+
+        def turn_to_teammate():
+            world = self.world()
+            v1 =  world['ally'][self.us]["center"]
+            v2 =  world['ally'][self.ally]["center"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
+
+            turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+
+            # !! can use one command instead
+
+            command = ""
+            command += self.turn_command(turn) + " $ "
+            command += self.turn_command("stop")
+            self.robot.compose(command)
+
+        turn_to_teammate()
+        turn_to_teammate()
+
+        self.robot.compose("kick 100")
     # PART 2
     def receive_turn_pass(self):
 
-        v1 =  self.world()['ally'][self.us]["center"]
-        v2 =  self.world()["ball_center"]
-        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+        world = self.world()
+        v1 =  world['ally'][self.us]["center"]
+        v2 =  world["ball_center"]
+        robot_dir_vector = world['ally'][self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
         self.robot.compose(self.turn_command(turn))
 
+        time.sleep(2)
+
         # !! maybe can wait a bit here
         self.get_ball()
 
-        v1 =  self.world()['ally'][self.us]["center"]
-        v2 =  self.world()['ally'][self.ally]["center"]
-        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+        def turn_to_teammate():
+            world = self.world()
+            print(world['ally'])
+            v1 =  world['ally'][self.us]["center"]
+            v2 =  world['ally'][self.ally]["center"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
 
-        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+            turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
-        # !! can use one command instead
+            # !! can use one command instead
 
-        command = ""
-        command += self.turn_command(turn) + " $ "
-        command += self.turn_command("stop") + " $ "
-        command += "kick 100"
+            command = ""
+            command += self.turn_command(turn) + " $ stop $"
+            self.robot.compose(command)
 
-        self.robot.compose(command)
+        turn_to_teammate()
+        turn_to_teammate()
+
+        self.robot.compose("kick 100")
 
 
     # PART 3
@@ -292,6 +337,14 @@ class Planner(object):
     def dist(self, v1, v2):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
         
+    def ball_caught(self):
+        while True:
+            while(self.robot.queue.empty()):
+                pass
+            response = self.robot.queue.get()
+            if response in ['y','n']:
+                return response == 'y'
+
     def wait_for_robot_response(self):
         while(True):
             while(self.robot.queue.empty()):
