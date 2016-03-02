@@ -270,7 +270,7 @@ class RobotComms(CommsToArduino):
         self.write(TEAM, GET_INFO, 0)
 
     def forwardSlow(self, distance):
-        self.write(TEAM, FORWARD_SLOW, distnace)
+        self.write(TEAM, FORWARD_SLOW, int(distance))
 
 
     def c(self, *args):

@@ -3,6 +3,7 @@ import logging
 from Queue import Queue
 from planning.world import WorldApi
 from plan.planner import Planner
+from communication.communications import RobotComms
 import time
 
 logging.basicConfig(format='%(asctime)s - %(levelname)-7s %(name)-20s %(message)s', datefmt='%I:%M:%S')
@@ -35,15 +36,15 @@ class Tmp():
     def compose(self, thing):
         log.debug(">>" + thing)
 
-def main():
+def planner():
     args = parse_args()
 
     if args.verbose:
         log.setLevel(logging.DEBUG)
 
     log.debug("Starting up...")
-    # robot = RobotComms(args.serial, camera)
-    robot = Tmp()
+    robot = RobotComms(args.serial)
+    # robot = Tmp()
     log.debug("Robot Configured")
     world = WorldApi(debug=args.verbose)
 
@@ -51,15 +52,15 @@ def main():
         log.debug('Entering Try-Catch')
         pl = Planner(world, args.color, robot=robot, debug=args.verbose)
         time.sleep(3)
-        log.debug("get ball")
-        pl.get_ball()
-        log.debug("get to")
-        pl.get_to((0,0))
+        # pl.get_ball()
+        # pl.get_to((0,0))
+        # pl.receive_pass()
+        pl.receive_turn_pass()
     except:
         raise
-    finally:
-        log.debug("Cleaning up...")
-        world.close()
+
+    return pl
+
 
 if __name__ == "__main__":
-    main()
+    planner()
