@@ -1,6 +1,5 @@
 import math
 import logging
-from planning.world import WorldApi
 
 log = logging.getLogger(__name__)
 # STATUS:
@@ -17,31 +16,31 @@ log = logging.getLogger(__name__)
 
 
 class Planner(object):
-    def __init__(self, world, our_color, robot, debug=False):
-        log.debug("Initialising Planner")
+    def __init__(self, world_api, our_color, robot, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
 
-        self.world = world
+        self.world_api = world_api
         self.robot = robot
 
         if our_color == 'green':
-            self.us = 'green_ally'
-            self.ally = 'pink_ally'
+            self.us = our_color
+            self.ally = 'pink'
         else:
-            self.us = 'pink_ally'
-            self.ally = 'green_ally'
+            self.us = 'pink'
+            self.ally = our_color
 
-        log.debug("System starting")
 
     # MILESTONE 1 planning task
+
+    def world(self):
+        return self.world_api.world
 
     def close(self):
         """
         Gracefully close everything that the planner depends on
         """
-        log.debug("Cleaning up")
-        self.world.close()
+        self.world_api.close()
 
     # x - forward distance
     # y - right distance
@@ -81,65 +80,24 @@ class Planner(object):
 
         # self.compose(command)
 
-    # MILESTONE 2 planning tasks
-
-    # rotate, move and grab
-    def move_and_grab(self):
-
-        # distance = 10
-        # while(distance >=10):
-        command = ""
-        # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-        (ball_coordinates, robot_coordinates, robot_dir_vector) = ((0, 0), (75, 75), (0, -1))
-        log.debug("expected turn - %d, expected dist - %d" % (-90, 226))
-
-        v1 = robot_coordinates
-        v2 = ball_coordinates
-
-        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-
-        distance = self.dist(v1, v2)
-
-        command += self.turn_command(turn) + " $"
-
-        command += "forward " + str(int(math.ceil(0.9 * distance))) + " $"  # * 0.8
-        # self.compose(command)
-
-        command += "open $"
-        command += "forward " + str(int(math.ceil(0.1 * distance))) + " $"
-        command += "stop"
-        log.debug(command)
-        # self.compose(command)
-
-    def rotate_kick(self):
-        # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-        (_, robot_coordinates, robot_dir_vector) = ((160, 160), (0, 320*0.46), (0, 1))
-        log.debug("expected turn - %d?" % 45)
-
-        v1 = robot_coordinates
-
-        turn = self.angle_a_to_b(v1, (-320*0.46, 0.0), robot_dir_vector)
-
-        command = ""
-
-        command += self.turn_command(turn) + " $"
-
-        command += "kick 100"
-        log.debug(command)
-        # self.compose(command)
-
     # MILESTONE 3 planning tasks
 
     # CORE functions
 
     def get_ball(self):
+        if not self.world():
+            return
+
         self.clear_robot_responses()
         while True:
             command = ""
 
-            v1 =  self.world[self.us]["location"]      # our robot's coordinates
-            v2 =  self.world["ball_center"] # ball's coordinates
-            robot_dir_vector = self.world[self.us]["orientation"]
+            v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
+            v2 =  self.world()["ball_center"] # ball's coordinates
+            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
+            log.debug(v1)
+            log.debug(v2)
+            log.debug(robot_dir_vector)
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $"
@@ -150,7 +108,7 @@ class Planner(object):
                 break
             else:
                 command += "forward " + str(int(math.ceil(0.7 * distance)))  # * 0.8
-                robot.compose(command)
+                self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
@@ -164,7 +122,7 @@ class Planner(object):
         command += "forward " + str(int(math.ceil(distance))) + " $"
         command += "stop"
 
-        robot.compose(command)
+        self.robot.compose(command)
 
         self.wait_for_robot_response()
 
@@ -174,13 +132,16 @@ class Planner(object):
         self.clear_robot_responses()
 
     def get_to(self, location):
+        if not self.world():
+            return
+
         self.clear_robot_responses()
         while True:
             command = ""
 
-            v1 =  self.world[self.us]["location"] # our robot's coordinates
+            v1 =  self.world()['ally'][self.us]["center"] # our robot's coordinates
             v2 =  location
-            robot_dir_vector = self.world[self.us]["orientation"]
+            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $"
@@ -191,15 +152,14 @@ class Planner(object):
                 break
             else:
                 command += "forward " + str(int(math.ceil(0.7 * distance)))  # * 0.8
-                robot.compose(command)
+                self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 self.wait_for_robot_response()
                 self.clear_robot_responses()
 
-        command = "forward " + str(int(math.ceil(distance)))
-        robot.compose(command)
+        self.robot.compose(command)
 
         self.wait_for_robot_response()
         self.clear_robot_responses()
@@ -207,9 +167,9 @@ class Planner(object):
     # PART 1
     def receive_pass(self):
 
-        v1 =  self.world[self.us]["location"]      # our robot's coordinates
-        v2 =  self.world["ball_center"] # ball's coordinates
-        robot_dir_vector = self.world[self.us]["orientation"]
+        v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
+        v2 =  self.world()["ball_center"] # ball's coordinates
+        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
         command = self.turn_command(turn)
@@ -219,25 +179,24 @@ class Planner(object):
         # !! maybe can wait a bit here
         self.get_ball()
 
-        log.debug(command)
 
     # PART 2
     def receive_turn_pass(self):
 
-        v1 =  self.world[self.us]["location"]
-        v2 =  self.world["ball_center"]
-        robot_dir_vector = self.world[self.us]["orientation"]
+        v1 =  self.world()['ally'][self.us]["center"]
+        v2 =  self.world()["ball_center"]
+        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
-        robot.compose(self.turn_command(turn))
+        self.robot.compose(self.turn_command(turn))
 
         # !! maybe can wait a bit here
         self.get_ball()
 
-        v1 =  self.world[self.us]["location"]
-        v2 =  self.world[self.ally]["location"]
-        robot_dir_vector = self.world[self.us]["orientation"]
+        v1 =  self.world()['ally'][self.us]["center"]
+        v2 =  self.world()['ally'][self.ally]["center"]
+        robot_dir_vector = self.world()['ally'][self.us]["orientation"]
 
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
@@ -250,16 +209,15 @@ class Planner(object):
 
         self.robot.compose(command)
 
-        log.debug(command)
 
     # PART 3
     def intercept(self):
         # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-        robot_coordinates =  self.world[self.us]["location"]
-        green_opp = self.world["green_opponent"]["location"]
-        pink_opp = self.world["pink_opponent"]["location"]
+        robot_coordinates =  self.world()['ally'][self.us]["center"]
+        green_opp = self.world()['enemy']["green"]["center"]
+        pink_opp = self.world()['enemy']["pink"]["center"]
 
-        ball_coordinates =  self.world["ball_center"]
+        ball_coordinates =  self.world()["ball_center"]
 
         # Choose the opponent which is not near the ball
         if self.dist(ball_coordinates, green_opp) > self.dist(ball_coordinates, pink_opp):
@@ -280,7 +238,7 @@ class Planner(object):
         y = k*x+m
         i_location = (x,y)
 
-        get_to(i_location)
+        self.get_to(i_location)
 
 
     def defend(self):
@@ -289,9 +247,9 @@ class Planner(object):
 
         (enemy_bot, robot_coordinates) = ( (320*0.46,0), (-40,100), (40,-100), (1,0) )
 
-        robot_coordinates =  self.world[self.us]["location"]
-        green_opp = self.world["green_opponent"]["location"]
-        pink_opp = self.world["pink_opponent"]["location"]
+        robot_coordinates =  self.world()['ally'][self.us]["center"]
+        green_opp = self.world()['enemy']["green"]["center"]
+        pink_opp = self.world()['enemy']["pink"]["center"]
 
         # !! Not sure if this works
         if green_opp is not None:
@@ -314,7 +272,7 @@ class Planner(object):
         y = k*x+m
         i_location = (x,y)
 
-        get_to(i_location)
+        self.get_to(i_location)
 
     # AUXILIARY functions
     def angle_between(self, p1, p2):
@@ -323,17 +281,22 @@ class Planner(object):
         return math.degrees((ang1 - ang2))
 
     def angle_a_to_b(self, r, b, dirv):
+        if type(dirv[1]) == list:
+            dv = dirv[1]
+        else:
+            dv = dirv
+
         d = (b[0] - r[0], b[1] - r[1])
-        return self.angle_between(d, dirv)
+        return self.angle_between(d, dv)
 
     def dist(self, v1, v2):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
-    def wait_for_robot_response():
+    def wait_for_robot_response(self):
         while(self.robot.queue.empty()):
             pass
 
-    def clear_robot_responses():
+    def clear_robot_responses(self):
         # Empty response queue
         while(not self.robot.queue.empty()):
             self.robot.queue.get()

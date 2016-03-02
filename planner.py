@@ -1,7 +1,9 @@
 #!/usr/bin/env python2.7
 import logging
+from Queue import Queue
 from planning.world import WorldApi
 from plan.planner import Planner
+import time
 
 logging.basicConfig(format='%(asctime)s - %(levelname)-7s %(name)-20s %(message)s', datefmt='%I:%M:%S')
 log = logging.getLogger(__name__)
@@ -25,6 +27,14 @@ def parse_args():
     return parser.parse_args()
 
 
+class Tmp():
+    queue = Queue()
+    def __init__(self):
+        pass
+
+    def compose(self, thing):
+        log.debug(">>" + thing)
+
 def main():
     args = parse_args()
 
@@ -33,17 +43,18 @@ def main():
 
     log.debug("Starting up...")
     # robot = RobotComms(args.serial, camera)
-    robot = None
+    robot = Tmp()
     log.debug("Robot Configured")
     world = WorldApi(debug=args.verbose)
 
     try:
         log.debug('Entering Try-Catch')
         pl = Planner(world, args.color, robot=robot, debug=args.verbose)
-        log.debug("Test move and grab")
-        pl.move_and_grab()
-        log.debug("Test rotate kick")
-        pl.rotate_kick()
+        time.sleep(3)
+        log.debug("get ball")
+        pl.get_ball()
+        log.debug("get to")
+        pl.get_to((0,0))
     except:
         raise
     finally:
