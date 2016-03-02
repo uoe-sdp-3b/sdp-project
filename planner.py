@@ -52,10 +52,20 @@ def planner():
         log.debug('Entering Try-Catch')
         pl = Planner(world, args.color, robot=robot, debug=args.verbose)
         time.sleep(3)
-        # pl.get_ball()
-        # pl.get_to((0,0))
+        
+        # PART 1
         # pl.receive_pass()
-        pl.receive_turn_pass()
+        # OR pl.get_ball()
+        
+        # PART 2
+        # pl.receive_turn_pass()
+        
+        # PART 3
+        # pl.intercept()
+        # pl.defend()
+        
+        
+        pl.defend()
     except:
         raise
 
