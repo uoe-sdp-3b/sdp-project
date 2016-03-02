@@ -32,6 +32,7 @@ SCALE_RIGHT = 12
 
 PING = 14
 GET_INFO = 15
+FORWARD_SLOW = 16
 
 # length to grabber from centre of robot
 LENGTHBUFFER = 12
@@ -268,6 +269,9 @@ class RobotComms(CommsToArduino):
 
     def getinfo(self):
         self.write(TEAM, GET_INFO, 0)
+
+    def forwardSlow(self, distance):
+        self.write(TEAM, FORWARD_SLOW, distnace)
 
 
     def c(self, *args):
