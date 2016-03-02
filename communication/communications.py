@@ -31,6 +31,7 @@ SCALE_LEFT = 11
 SCALE_RIGHT = 12
 
 PING = 14
+GET_INFO = 15
 
 # length to grabber from centre of robot
 LENGTHBUFFER = 12
@@ -236,10 +237,10 @@ class RobotComms(CommsToArduino):
 
 
     def open_grabber(self):
-        self.write(TEAM, OPEN, 80)
+        self.write(TEAM, OPEN_GRABBER, 80)
 
     def close_grabber(self):
-        self.write(TEAM, CLOSE, 80)
+        self.write(TEAM, CLOSE_GRABBER, 80)
 
 
     def read_compass(self):
@@ -264,6 +265,9 @@ class RobotComms(CommsToArduino):
         for x in range(0,400):
             self.write(TEAM,PING,0)
             print x
+
+    def getinfo(self):
+        self.write(TEAM, GET_INFO, 0)
 
 
     def c(self, *args):
