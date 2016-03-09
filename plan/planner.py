@@ -97,14 +97,14 @@ class Planner(object):
 
             log.debug(">>>")
             log.debug(world)
-            
+
 
             v1 =  world['ally'][self.us]["center"]      # our robot's coordinates
             v2 =  world["ball_center"] # ball's coordinates
             robot_dir_vector = world['ally'][self.us]["orientation"]
 
             if v1 is None or v2 is None or robot_dir_vector is None:
-                continue            
+                continue
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $ "
@@ -157,11 +157,11 @@ class Planner(object):
         while True:
             world = self.world()
             command = ""
-            
+
             v1 =  world['ally'][self.us]["center"] # our robot's coordinates
             v2 =  location
             robot_dir_vector = world['ally'][self.us]["orientation"]
-            
+
             if v1 is None or v2 is None or robot_dir_vector is None:
                 continue
 
@@ -189,12 +189,12 @@ class Planner(object):
 
     # PART 1
     def receive_pass(self):
-        
+
         try:
             v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
             v2 =  self.world()["ball_center"] # ball's coordinates
             robot_dir_vector = self.world()['ally'][self.us]["orientation"]
-        
+
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command = self.turn_command(turn)
@@ -202,7 +202,7 @@ class Planner(object):
             self.robot.compose(command)
         except:
             print("exception in receive pass")
-        
+
         # !! maybe can wait a bit here
         self.get_ball()
 
@@ -215,8 +215,8 @@ class Planner(object):
             v1 =  world['ally'][self.us]["center"]
             v2 =  world['ally'][self.ally]["center"]
             robot_dir_vector = world['ally'][self.us]["orientation"]
-            
-            
+
+
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
             # !! can use one command instead
@@ -237,7 +237,7 @@ class Planner(object):
         # v1 =  world['ally'][self.us]["center"]
         # v2 =  world["ball_center"]
         # robot_dir_vector = world['ally'][self.us]["orientation"]
-        
+
 
         # turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
@@ -254,7 +254,7 @@ class Planner(object):
                 v1 =  world['ally'][self.us]["center"]
                 v2 =  world['ally'][self.ally]["center"]
                 robot_dir_vector = world['ally'][self.us]["orientation"]
-                
+
                 if v1 is not None and v2 is not None and robot_dir_vector is not None:
                     break
 
@@ -281,11 +281,10 @@ class Planner(object):
             pink_opp = world['enemy']["pink"]["center"]
 
             ball_coordinates =  self.world()["ball_center"]
-            
+
             if robot_coordinates is not None and green_opp is not None and pink_opp is not None and ball_coordinates is not None:
                 break
-        
-        
+
 
         # Choose the opponent which is not near the ball
         if self.dist(ball_coordinates, green_opp) > self.dist(ball_coordinates, pink_opp):
@@ -317,7 +316,7 @@ class Planner(object):
             robot_coordinates =  world['ally'][self.us]["center"]
             green_opp = world['enemy']["green"]["center"]
             pink_opp = world['enemy']["pink"]["center"]
-            
+
             if robot_coordinates is not None and (green_opp is not None or pink_opp is not None):
                 break
 
@@ -326,9 +325,13 @@ class Planner(object):
             enemy_bot = green_opp
         else:
             enemy_bot = pink_opp
+        world = self.world()
+            robot_coordinates =  world['ally'][self.us]["center"]
+            green_opp = world['enemy']["green"]["center"]
+            pink_opp = world['enemy']["pink"]["center"]
 
-        goal_center = (320*0.46,0)
-
+            if robot_coordinates is not None and (green_opp is not None or pink_opp is not None):
+                break
         # Solving geometric problem with x,y axes for i_location
         # y = kx + m
 
@@ -343,6 +346,58 @@ class Planner(object):
         i_location = (x,y)
 
         self.get_to(i_location)
+
+
+    def score(self):
+        # Should attempt to kick ball directly at the enemy goal
+        # This assumes the robot is already in a suitable position to score a goal
+        # Also assumes the robot currently has the ball in the kicker
+
+        # Need to get robot's current position and heading
+        # Also need goal location
+
+        while True:
+            world = self.world()
+            robot_coordinates =  world['ally'][self.us]["center"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
+            goal_location  = goal_centre[0]
+            if robot_coordinates is not None and (robot_dir_vector is not None) and (goal_location is not None):
+                break
+
+        # Firstly, turn to face goal
+
+        turn_angle = angle_a_to_b(robot_coordinates, goal_location,robot_dir_vector)
+        command = ""
+        command += self.turn_command(turn_angle) + "$ stop $"
+
+        # next, kick at goal
+        command += "kick 100 $"
+
+        self.robot.compose(command)
+        self.wait_for_robot_response()
+        self.clear_robot_responses()
+
+
+    def pass_to_teammate(self):
+
+        while True:
+            world = self.world()
+            v1 =  world['ally'][self.us]["center"]
+            v2 =  world['ally'][self.ally]["center"]
+            robot_dir_vector = world['ally'][self.us]["orientation"]
+            if robot_coordinates is not None and v1 is not None and v2 is not None and robot_dir_vector is not None:
+                break
+
+        turn_angle = angle_a_to_b(v1,v2, robot_dir_vector)
+        command = ""
+        command += self.turn_command(turn_angle) + "$ stop $"
+
+        command += "kick 100 $"
+        
+        self.robot.compose(command)
+        self.wait_for_robot_response()
+        self.clear_robot_responses()
+
 
     # AUXILIARY functions
     def angle_between(self, p1, p2):
@@ -361,7 +416,7 @@ class Planner(object):
 
     def dist(self, v1, v2):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
-        
+
     def ball_caught(self):
         while True:
             while(self.robot.queue.empty()):
@@ -377,8 +432,8 @@ class Planner(object):
             response = self.robot.queue.get()
             if response[-1] == '1':
                 break
-        
-    
+
+
     def clear_robot_responses(self):
         # Empty response queue
         while(not self.robot.queue.empty()):
