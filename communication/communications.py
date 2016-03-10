@@ -6,6 +6,9 @@ from threading import Thread
 from random import randint
 from math import *
 import sys
+
+import time as time_
+
 # from vision.G3VisionAPI import *
 
 
@@ -77,6 +80,11 @@ class CommsToArduino(object):
         return (arg + opcode) % 10
 
 
+    def millis(self, start_time):
+        st = int(round(start_time * 1000))
+        ms = int(round(time_.time() * 1000))
+        return ms-st
+
     # HERE: add timeout, ACK_0, ACK_1, NAK(corr)
     # need to get from response: corr: w; seqNo: x; done: y; unregonized_command = z;
     def _write(self, sig, opcode, arg):
@@ -90,23 +98,29 @@ class CommsToArduino(object):
         # Send command
         self.to_robot(opcode_string)
 
-        # Keep sending command every 0.25s until you get a received OK response
+
+        # 1. send command wait for response
+        # if time passed 200 milliseconds resend command
+        # only exit loop once acknowledgement is accepted that the first command have been recieved and is being processed
         sent_successfully = False
-        completed_instruction = False
-        while (not completed_instruction):
-            sleep(0.25)
+        start_time_1 = time_.time()
+        timeout = 200 # 200 milliseconds
+
+
+        # initialize values for response sequence number, done and corruption bits
+        corr = ""
+        done = ""
+        rseqNo = 0
+
+        while(not sent_successfully):
+            # check response queue is not empty
+            # if it is loop until it is not
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
 
-                # Check if success
-                # (not checksum fail or unrecognized or bad command length)
-                # Note: would be better to have a specific response upon success
-                corr = ""
-                done = ""
-                rseqNo = 0
-
-                if(response == "0001"):
-                    #unregonized command (this should not happen)
+                # check response is not an unregonized command (if so just return)
+                # this in theory should never happen
+                if (response == "0001"):
                     return
 
                 if(len(response) >= 3):
@@ -116,24 +130,112 @@ class CommsToArduino(object):
                     if(response[1] == "1"):
                         rseqNo = 1
 
-                if(not sent_successfully):
-
-                    if(corr == "0" and self.seqNo == rseqNo and done == "0"):
-                        sent_successfully = True
-
-                    else:  
-                        self.to_robot(opcode_string)
+                # get time in milliseconds since the command was sent
+                # if this value is greater than 200 resend the command
+                if(corr == "0" and self.seqNo == rseqNo and done == "0"):
+                    sent_successfully = True
+                    start_time_2 = time_.time() # begin 2nd timer for 2nd acknowledgement
 
                 else:
+                    # check if 200 milliseconds has passed since the last time the command was sent
+                    x = self.millis(start_time_1)
+                    if(x > timeout):
+                        self.to_robot(opcode_string)
+                        start_time_1 = time_.time()
 
-                    if(corr == "0" and self.seqNo == rseqNo and done == "1"):
-                        completed_instruction = True
-                        if(self.seqNo == 0):
-                            self.seqNo = 1
-                        else:
-                            self.seqNo = 0
 
-        return
+        # 2. now we need to wait for the 2nd acknowledgement to state that the command has been executed
+        completed_instruction = False
+
+        while(not completed_instruction):
+            if not self.internal_queue.empty():
+                response = self.internal_queue.get()
+
+                # this should never happen!
+                # if (response == "0001"):
+                #     return
+
+                if(len(response) >= 3):
+                    corr = response[0]
+                    done = response[2]
+
+                    if(response[1] == "1"):
+                        rseqNo = 1
+
+                if(corr == "0" and self.seqNo == rseqNo and done == "1"):
+                    if(self.seqNo == 0):
+                        self.seqNo = 1
+                    else:
+                        self.seqNo = 0
+                    
+                    return
+
+            # queue is empty
+            # check for timeout, if timeout send command asking for it to resend 2nd acknowledgement
+            # this command itself does not need an acknolwdgement message back!
+                else:
+                    x = self.millis(start_time_2)
+                    # checks if time since 1st acknowledgement been received and NOW has passed 500 millisconds
+                    # if so resends command to ask for 2nd acknowledgement again
+                    if(x >= 4000):
+                        opcode_string2 = "%02d%03d%d%d\r" % (17, 0, 7, self.seqNo)
+                        self.to_robot(opcode_string2)
+                        start_time_2 = time_.time()
+
+
+
+
+        # while (not completed_instruction):
+        #     sleep(0.25)
+        #     if not self.internal_queue.empty():
+        #         response = self.internal_queue.get()
+
+        #         # Check if success
+        #         # (not checksum fail or unrecognized or bad command length)
+        #         # Note: would be better to have a specific response upon success
+        #         corr = ""
+        #         done = ""
+        #         rseqNo = 0
+
+        #         if(response == "0001"):
+        #             #unregonized command (this should not happen)
+        #             return
+
+        #         if(len(response) >= 3):
+        #             corr = response[0]
+        #             done = response[2]
+
+        #             if(response[1] == "1"):
+        #                 rseqNo = 1
+
+        #         if(not sent_successfully):
+
+        #             if(corr == "0" and self.seqNo == rseqNo and done == "0"):
+        #                 sent_successfully = True
+        #                 # start timer
+        #                 start_time_2 = datetime.now()
+
+        #             else:  
+        #                 self.to_robot(opcode_string)
+
+        #         else:
+
+        #             # if timeout ask for 2nd acknowledgement
+        #             # this should resend the 2nd last acknowledgement as per the arduino code (double check)
+        #             # what about if first instructions is still in execution?
+        #             x = millis(start_time_2)
+        #             if(x >= timeout):
+        #                 opcode_string2 = "%02d%03d%d%d\r" % (17, 0, 7, self.seqNo)
+        #                 self.to_robot(opcode_string2)
+
+        #             if(corr == "0" and self.seqNo == rseqNo and done == "1"):
+        #                 completed_instruction = True
+        #                 if(self.seqNo == 0):
+        #                     self.seqNo = 1
+        #                 else:
+        #                     self.seqNo = 0
+
+        # return
 
     def to_robot(self, message):
         # Send command
@@ -172,7 +274,7 @@ class RobotComms(CommsToArduino):
         self.write_thread.start()
         super(RobotComms, self).__init__(port)
 
-    def gclose(self):
+    def g(self):
         self._close = True
         self.comn.close()
         self.queue.put("Robot Closed")
@@ -265,7 +367,6 @@ class RobotComms(CommsToArduino):
     def testcomms(self):
         for x in range(0,400):
             self.write(TEAM,PING,0)
-            print x
 
     def getinfo(self):
         self.write(TEAM, GET_INFO, 0)
