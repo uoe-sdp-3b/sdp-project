@@ -51,7 +51,7 @@ def planner():
     try:
         log.debug('Entering Try-Catch')
         pl = Planner(world, args.color, robot=robot, debug=args.verbose)
-        time.sleep(3)
+        time.sleep(1) #working for 3 seconds#
         
         # PART 1
         # pl.receive_pass()
