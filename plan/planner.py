@@ -116,7 +116,8 @@ class Planner(object):
                 if distance < 30:
                     self.clear_robot_responses()
                     self.robot.compose("backward 10")
-                    self.wait_for_robot_response()
+                    #self.wait_for_robot_response()
+                    time.sleep(3)
                     self.clear_robot_responses()
                 break
             else:
@@ -127,7 +128,8 @@ class Planner(object):
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 # self.wait_for_robot_response()
-                self.wait_for_robot_response()
+                #self.wait_for_robot_response()
+                time.sleep(3)
                 self.clear_robot_responses()
 
                 # Alternative: sleep(5)
@@ -147,6 +149,11 @@ class Planner(object):
 
         if not self.ball_caught():
             print "Trying again"
+            self.clear_robot_responses()
+            self.robot.compose("open_grabber")
+            #self.wait_for_robot_response()
+            time.sleep(2)
+            self.clear_robot_responses()
             self.get_ball()
 
 
