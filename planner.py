@@ -55,7 +55,7 @@ def planner():
         
         # PART 1
         # pl.receive_pass()
-        # OR pl.get_ball()
+        pl.get_ball()
         
         # PART 2
         # pl.receive_turn_pass()
@@ -65,7 +65,7 @@ def planner():
         # pl.defend()
         
         
-        pl.defend()
+        # pl.defend()
     except:
         raise
 
