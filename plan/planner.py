@@ -325,13 +325,7 @@ class Planner(object):
             enemy_bot = green_opp
         else:
             enemy_bot = pink_opp
-        world = self.world()
-            robot_coordinates =  world['ally'][self.us]["center"]
-            green_opp = world['enemy']["green"]["center"]
-            pink_opp = world['enemy']["pink"]["center"]
 
-            if robot_coordinates is not None and (green_opp is not None or pink_opp is not None):
-                break
         # Solving geometric problem with x,y axes for i_location
         # y = kx + m
 
