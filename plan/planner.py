@@ -15,6 +15,11 @@ log = logging.getLogger(__name__)
 # - make planner conform with milestone 3 requirements
 # - make planner run specifically when we need it (possibly in the backgroud?)
 
+# - Decide how we want to work out where to move to to recieve a pass
+# - Decide how we want to work out who defender is. i.e. from being in defense area or via comms with other team
+# - Also, I've written some more small todos futher down the program
+# - -- Calum
+
 
 class Planner(object):
 
