@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class Planner(object):
+
     def __init__(self, world_api, our_color, robot, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
@@ -42,6 +43,76 @@ class Planner(object):
         Gracefully close everything that the planner depends on
         """
         self.world_api.close()
+
+    def strategy(self):
+        # This should be the overall wrapper / strategy
+
+        state = 0
+
+        while(True):
+
+            if(state == 0):
+                # Firstly, we need to find out who has the ball / where it is
+
+                who = who_has_ball()
+
+                if(ball_caught()):
+                    # If we have the ball
+                    state = 1
+                else if who == "ally":
+                    # If our teammate has the ball
+                    state = 2
+                else if (who == "pink_opponent" || who == "green_opponent"):
+                    # If an enemy has the ball
+                    state = 3
+                else:
+                    # If the ball is free on the pitch
+                    state = 4
+
+            else if(state == 1):
+                # This is the state we are in when we have the ball in our grabber
+                # If we are close enough to the enemy goal, we should attempt to shoot
+                # Otherwise, we should attempt a pass
+                if(close_enough_to_shoot()):
+                    score()
+                else:
+                    pass_to_teammate()
+                state = 0
+
+            else if(state == 2):
+                # This is the state we are in when our teammate has the ball
+                # If the teammate is close enough to score, we should try and move back and defende
+                # Otherwise, we should try and move forward enough to be in a position to receive a pass
+
+                if(teammate_close_enough_to_shoot):
+                    defend()
+                else :
+                    move_to_recieve()
+                    receive_pass()
+                state = 0
+
+            else if(state == 3):
+                # This is the state we are in if an enemy robot has the ball
+                # If we are designated as the defender somehow, we should stay in the defense box
+                # Otherwise, we should move and try to intercept the ball from opponents' kicks
+
+                if(is_defender):
+                    defend()
+                else:
+                    intercept()
+                state = 0
+
+            else if(state == 4):
+                # This is the state we are in if no-one has the ball
+                # If we are the closest robot to the ball, then we should try and grab the ball quick;y
+                # Otherwise, we should go and try and defend the goal
+
+                if(closest_to_ball):
+                    get_ball()
+                else:
+                    defend()
+                state = 0
+
 
     # x - forward distance
     # y - right distance
@@ -365,6 +436,7 @@ class Planner(object):
             robot_coordinates =  world['ally'][self.us]["center"]
             robot_dir_vector = world['ally'][self.us]["orientation"]
             goal_location  = goal_centre[0]
+            #TODO make sure this is the right goal
             if robot_coordinates is not None and (robot_dir_vector is not None) and (goal_location is not None):
                 break
 
@@ -389,7 +461,7 @@ class Planner(object):
             v1 =  world['ally'][self.us]["center"]
             v2 =  world['ally'][self.ally]["center"]
             robot_dir_vector = world['ally'][self.us]["orientation"]
-            if robot_coordinates is not None and v1 is not None and v2 is not None and robot_dir_vector is not None:
+            if v1 is not None and v2 is not None and robot_dir_vector is not None:
                 break
 
         turn_angle = angle_a_to_b(v1,v2, robot_dir_vector)
@@ -397,7 +469,7 @@ class Planner(object):
         command += self.turn_command(turn_angle) + "$ stop $"
 
         command += "kick 100 $"
-        
+
         self.robot.compose(command)
         self.wait_for_robot_response()
         self.clear_robot_responses()
@@ -428,12 +500,12 @@ class Planner(object):
             response = self.robot.queue.get()
             if response in ['y','n']:
                 return response == 'y'
-                
+
     def millis(self, start_time):
         st = int(round(start_time * 1000))
         ms = int(round(time_.time() * 1000))
         return ms-st
-    
+
     def wait_for_robot_response(self):
         start_time_1 = time.time()
         while(True):
@@ -467,3 +539,99 @@ class Planner(object):
                 command = "right " + str(360 - abs(int(turn)))
 
         return command
+
+    #TODO - implement these functions
+
+
+    def is_defender(self):
+        # TODO - function should check to see if we are the defender on our team, e.g. by seeing if we are in the defense box
+
+    def close_enough_to_shoot(self):
+        # function should determine if the robot is close enough to the enemy goal to shoot, or if it should attempt a pass
+        # maybe also need a similar one for the teammate
+
+        while True:
+            world = self.world()
+            v1 =  world['ally'][self.us]["center"]
+            goal_location  = goal_centre[0]
+            #TODO make sure this is the right goal
+            if v1 is not None and goal_location is not None:
+                break
+
+        xdiff = goal_location[0] - v1[0]
+        ydiff = goal_location[1] - v1[1]
+
+        diff = sqrt(xdiff **2 + ydiff ** 2)
+
+        if (diff < 80):
+            return True
+        else:
+            return False
+        #TODO Fix threshold value
+
+    def teammate_close_enough_to_shoot(self):
+        # see above
+
+        while True:
+            world = self.world()
+            v1 =  world['ally'][self.ally]["center"]
+            goal_location  = goal_centre[0]
+            #TODO make sure this is the right goal
+            robot_dir_vector = world['ally'][self.us]["orientation"]
+            if v1 is not None and goal_location is not None:
+                break
+
+        xdiff = goal_location[0] - v1[0]
+        ydiff = goal_location[1] - v1[1]
+
+        diff = sqrt(xdiff **2 + ydiff ** 2)
+
+        if (diff < 80):
+            return True
+        else:
+            return False
+        #TODO Fix threshold value
+
+    def closest_to_ball(self):
+        # function should tell us which robot is the closest to the ball on the pitch
+
+        while True:
+            world = self.world()
+            v1 =  world['ally'][self.us]["center"]
+            v2 =  world['ally'][self.ally]["center"]
+            green_opp = world['enemy']["green"]["center"]
+            pink_opp = world['enemy']["pink"]["center"]
+            ball_coordinates =  self.world()["ball_center"]
+
+            if v1 is not None and v2 is not None and green_opp is not None and pink_opp is not None:
+                break
+
+        v1b = dist(v1, ball_coordinates)
+        v2b = dist(v2, ball_coordinates)
+        gb = dist(green_opp, ball_coordinates)
+        pb = dist(pink_opp, ball_coordinates)
+
+        dists = [v1b, v2b, gb, pb]
+        robots = ["us", "ally", "green_opponent", "pink_opponent"]
+
+        ind = dists.index(min(dists))
+        robot = robots[ind]
+        dist = dists[ind]
+
+        return[robot, dist]
+
+    def move_to_recieve(self):
+        # TODO - Function should allow us to move to a better position to receive a pass
+
+    def who_has_ball(self):
+        # TODO - Should return who has the ball currently.
+        # Should work by calling closest_to_ball, and then if the difference between that robot and the ball is small enough,
+        # then it is determined to 'have' the ball
+
+        [robot, dist] = closest_to_ball()
+
+        if dist < 15:
+            #TODO check threshold value
+            return robot
+        else:
+            return "no-one"
