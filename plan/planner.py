@@ -64,17 +64,17 @@ class Planner(object):
                 if(ball_caught()):
                     # If we have the ball
                     state = 1
-                else if who == "ally":
+                elif who == "ally":
                     # If our teammate has the ball
                     state = 2
-                else if (who == "pink_opponent" || who == "green_opponent"):
+                elif (who == "pink_opponent" or who == "green_opponent"):
                     # If an enemy has the ball
                     state = 3
                 else:
                     # If the ball is free on the pitch
                     state = 4
 
-            else if(state == 1):
+            elif(state == 1):
                 # This is the state we are in when we have the ball in our grabber
                 # If we are close enough to the enemy goal, we should attempt to shoot
                 # Otherwise, we should attempt a pass
@@ -84,7 +84,7 @@ class Planner(object):
                     pass_to_teammate()
                 state = 0
 
-            else if(state == 2):
+            elif(state == 2):
                 # This is the state we are in when our teammate has the ball
                 # If the teammate is close enough to score, we should try and move back and defende
                 # Otherwise, we should try and move forward enough to be in a position to receive a pass
@@ -96,7 +96,7 @@ class Planner(object):
                     receive_pass()
                 state = 0
 
-            else if(state == 3):
+            elif(state == 3):
                 # This is the state we are in if an enemy robot has the ball
                 # If we are designated as the defender somehow, we should stay in the defense box
                 # Otherwise, we should move and try to intercept the ball from opponents' kicks
@@ -107,7 +107,7 @@ class Planner(object):
                     intercept()
                 state = 0
 
-            else if(state == 4):
+            elif(state == 4):
                 # This is the state we are in if no-one has the ball
                 # If we are the closest robot to the ball, then we should try and grab the ball quick;y
                 # Otherwise, we should go and try and defend the goal
@@ -550,6 +550,7 @@ class Planner(object):
 
     def is_defender(self):
         # TODO - function should check to see if we are the defender on our team, e.g. by seeing if we are in the defense box
+        pass
 
     def close_enough_to_shoot(self):
         # function should determine if the robot is close enough to the enemy goal to shoot, or if it should attempt a pass
@@ -627,6 +628,7 @@ class Planner(object):
 
     def move_to_recieve(self):
         # TODO - Function should allow us to move to a better position to receive a pass
+        pass
 
     def who_has_ball(self):
         # TODO - Should return who has the ball currently.
