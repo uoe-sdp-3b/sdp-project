@@ -169,6 +169,7 @@ class Planner(object):
         self.clear_robot_responses()
         while True:
             world = self.world()
+            
             command = ""
 
             log.debug(">>>")
@@ -181,7 +182,10 @@ class Planner(object):
 
             if v1 is None or v2 is None or robot_dir_vector is None:
                 continue
-
+            
+            print "v1 ", v1
+            print "v2 ", v2
+            print "dirv ", robot_dir_vector
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $ "
 
@@ -190,23 +194,23 @@ class Planner(object):
 
             if distance <= 80:
                 if distance < 30:
-                    self.clear_robot_responses()
+#                    self.clear_robot_responses()
                     self.robot.compose("backward 10")
-                    #self.wait_for_robot_response()
+#                    self.wait_for_robot_response()
                     time.sleep(3)
-                    self.clear_robot_responses()
+#                    self.clear_robot_responses()
                 break
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-                self.clear_robot_responses()
+#                self.clear_robot_responses()
                 self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 # self.wait_for_robot_response()
-                #self.wait_for_robot_response()
-                time.sleep(3)
-                self.clear_robot_responses()
+#                self.wait_for_robot_response()
+                time.sleep(5)
+#                self.clear_robot_responses()
 
                 # Alternative: sleep(5)
 
@@ -215,21 +219,23 @@ class Planner(object):
         command += "open_grabber $"
         command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
         command += "close_grabber"
-
-        self.robot.compose(command)
-
-        self.wait_for_robot_response()
-
-        self.clear_robot_responses()
+#        self.clear_robot_responses()
+#        self.robot.compose(command)
+#        self.wait_for_robot_response()
+#        self.clear_robot_responses()
+        time.sleep(2)
+        
         self.robot.compose("read_infrared")
 
         if not self.ball_caught():
             print "Trying again"
             self.clear_robot_responses()
             self.robot.compose("open_grabber")
-            #self.wait_for_robot_response()
+            self.robot.compose("backward 20")
+            self.robot.compose("stop")
+#            self.wait_for_robot_response()
             time.sleep(2)
-            self.clear_robot_responses()
+#            self.clear_robot_responses()
             self.get_ball()
 
 
@@ -499,16 +505,20 @@ class Planner(object):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
     def ball_caught(self):
+        start_time_1 = time.time()
         while True:
             while(self.robot.queue.empty()):
                 pass
             response = self.robot.queue.get()
             if response in ['y','n']:
                 return response == 'y'
+            x = self.millis(start_time_1)
+            if(x > 800):
+                return False
 
     def millis(self, start_time):
         st = int(round(start_time * 1000))
-        ms = int(round(time_.time() * 1000))
+        ms = int(round(time.time() * 1000))
         return ms-st
 
     def wait_for_robot_response(self):
