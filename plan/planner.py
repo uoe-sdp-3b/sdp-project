@@ -229,7 +229,7 @@ class Planner(object):
 
         if not self.ball_caught():
             print "Trying again"
-            self.clear_robot_responses()
+#            self.clear_robot_responses()
             self.robot.compose("open_grabber")
             self.robot.compose("backward 20")
             self.robot.compose("stop")
@@ -510,6 +510,9 @@ class Planner(object):
             while(self.robot.queue.empty()):
                 pass
             response = self.robot.queue.get()
+            if response == 'y':
+                print "BALL CAUGHT"
+            
             if response in ['y','n']:
                 return response == 'y'
             x = self.millis(start_time_1)
