@@ -103,6 +103,8 @@ class CommsToArduino(object):
         # only exit loop once acknowledgement is accepted that the first command have been recieved and is being processed
         sent_successfully = False
         start_time_1 = time_.time()
+        start_time_2 = None
+
         timeout = 250 # 200 milliseconds, might want to increase!
 
         while(not sent_successfully):
@@ -110,6 +112,9 @@ class CommsToArduino(object):
 
             if not self.internal_queue.empty():
                 response = self.internal_queue.get()
+
+                if response[0] in ['!', 'y','n']:
+                    continue
 
                 corr = ""
                 done = ""
@@ -125,14 +130,22 @@ class CommsToArduino(object):
                     if(response[1] == "1"):
                         rseqNo = 1
 
-                if(corr == "0" and rseqNo == self.seqNo and done == "1"):
-                    sent_successfully = True
-                    self.seqNo = not self.seqNo
+                    if(corr == "0" and rseqNo == self.seqNo and done == "1"):
+                        sent_successfully = True
+                        self.seqNo = not self.seqNo
+                    else:
+                        x = self.millis(start_time_1)
+                        if(x > timeout):
+                            self.to_robot(opcode_string)
+                            start_time_1 = time_.time()
+            else:
+                if start_time_2 is None:
+                    start_time_2 = time_.time()
                 else:
-                    x = self.millis(start_time_1)
-                    if(response[0] not in ['!', 'y','n'] and x > timeout):
+                    y = self.millis(start_time_2)
+                    if(y > 1000):
                         self.to_robot(opcode_string)
-                        start_time_1 = time_.time()
+                        start_time_2 = None
 
 
     def to_robot(self, message):
