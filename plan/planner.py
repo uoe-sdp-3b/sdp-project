@@ -500,6 +500,30 @@ class Planner(object):
         ms = int(round(time.time() * 1000))
         return ms-st
 
+    def send_and_ack(self, cmd):
+        """
+        Sends command and blocks until ack
+        """
+        self.clear_robot_responses()
+        commands = cmd.strip().split("$")
+        if commands[-1].strip() == "":
+            commands.pop()
+
+        self.robot.compose(cmd)
+
+        last_ack = -1
+        no_acks = 0
+        while no_acks < len(commands):
+            while(self.robot.queue.empty()):
+                pass
+            response = self.robot.queue.get()
+
+            if len(response) == 3 and response[1] in ["0", "1"] and response != last_ack:
+                no_acks += 1
+                last_ack = response[1]
+
+        self.clear_robot_responses()
+
     def wait_for_robot_response(self):
         start_time_1 = time.time()
         while(True):
