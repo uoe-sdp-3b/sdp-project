@@ -198,54 +198,28 @@ class Planner(object):
             print(distance)
 
             if distance <= 80:
-                if distance < 30:
-                    # self.clear_robot_responses()
-                    self.robot.compose("backward 10")
-                    # self.wait_for_robot_response()
-                    time.sleep(3)
-                    # self.clear_robot_responses()
                 break
+                # if distance < 30:
+                #     self.send_and_ack("backward 10")
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-                # self.clear_robot_responses()
-                self.robot.compose(command)
-
-                # !! Can be written differently if can interrupt robot's previous command
-                # !! Can check for response == success
-                # self.wait_for_robot_response()
-                # self.wait_for_robot_response()
-                time.sleep(5)
-                # self.clear_robot_responses()
-
-                # Alternative: sleep(5)
+                self.send_and_ack(command)
 
         command = ""
         command += self.turn_command(turn) + " $ stop $"
         command += "open_grabber $"
         command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
         command += "close_grabber"
-        # self.clear_robot_responses()
-        # self.robot.compose(command)
-        # self.wait_for_robot_response()
-        # self.clear_robot_responses()
-        time.sleep(2)
 
         self.robot.compose("read_infrared")
 
         if not self.ball_caught():
             print "Trying again"
-            # self.clear_robot_responses()
-            self.robot.compose("open_grabber")
-            self.robot.compose("backward 20")
-            self.robot.compose("stop")
-            # self.wait_for_robot_response()
-            time.sleep(2)
-            # self.clear_robot_responses()
+            self.send_and_ack("open_grabber $ backward 20 $ stop")
             self.get_ball()
 
     def get_to(self, location):
 
-        # self.clear_robot_responses()
         while True:
             world = self.get_world_frame(us=True)
             command = ""
@@ -270,7 +244,6 @@ class Planner(object):
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
-                # self.wait_for_robot_response()
                 time.sleep(4)
                 self.clear_robot_responses()
 
@@ -481,7 +454,6 @@ class Planner(object):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
     def ball_caught(self):
-        start_time_1 = time.time()
         while True:
             while(self.robot.queue.empty()):
                 pass
@@ -491,9 +463,6 @@ class Planner(object):
 
             if response in ['y', 'n']:
                 return response == 'y'
-            x = self.millis(start_time_1)
-            if(x > 800):
-                return False
 
     def millis(self, start_time):
         st = int(round(start_time * 1000))
