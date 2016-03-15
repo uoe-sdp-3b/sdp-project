@@ -23,12 +23,20 @@ log = logging.getLogger(__name__)
 
 class Planner(object):
 
-    def __init__(self, world_api, our_color, robot, debug=False):
+    def __init__(self, world_api, our_color, robot, our_goal, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
 
         self.world_api = world_api
         self.robot = robot
+
+        # which side we are playing from
+        self.our_goal = our_goal
+
+        if our_goal == "left":
+            self.enemy_goal = "right"
+        else:
+            self.enemy_goal = "left"
 
         if our_color == 'green':
             self.us = our_color
@@ -37,9 +45,12 @@ class Planner(object):
             self.us = 'pink'
             self.ally = our_color
 
+        self.goal_center = {
+            "left": [-320, 0],
+            "right": [320, 0]
+        }
 
     # MILESTONE 1 planning task
-
     def world(self):
         return self.world_api.world
 
@@ -51,73 +62,81 @@ class Planner(object):
 
     def strategy(self):
         # This should be the overall wrapper / strategy
+        INITIAL_STATE = 0
+        OUR_POSSESSION = 1
+        ALLY_POSSESSION = 2
+        ENEMY_POSSESSION = 3
+        BALL_FREE = 4
 
         state = 0
 
         while(True):
 
-            if(state == 0):
+            if(state == INITIAL_STATE):
                 # Firstly, we need to find out who has the ball / where it is
 
-                who = who_has_ball()
+                who = self.who_has_ball()
 
-                if(ball_caught()):
+                if(self.ball_caught()):
                     # If we have the ball
-                    state = 1
+                    state = OUR_POSSESSION
                 elif who == "ally":
                     # If our teammate has the ball
-                    state = 2
+                    state = ALLY_POSSESSION
                 elif (who == "pink_opponent" or who == "green_opponent"):
                     # If an enemy has the ball
-                    state = 3
+                    state = ENEMY_POSSESSION
                 else:
                     # If the ball is free on the pitch
-                    state = 4
+                    state = BALL_FREE
 
-            elif(state == 1):
-                # This is the state we are in when we have the ball in our grabber
+            elif(state == OUR_POSSESSION):
+                # This is the state when we have the ball in our grabber
                 # If we are close enough to the enemy goal, we should attempt to shoot
                 # Otherwise, we should attempt a pass
-                if(close_enough_to_shoot()):
-                    score()
+                if(self.close_enough_to_shoot()):
+                    self.score()
                 else:
-                    pass_to_teammate()
-                state = 0
+                    self.pass_to_teammate()
+                state = INITIAL_STATE
 
-            elif(state == 2):
+            elif(state == ALLY_POSSESSION):
                 # This is the state we are in when our teammate has the ball
                 # If the teammate is close enough to score, we should try and move back and defende
                 # Otherwise, we should try and move forward enough to be in a position to receive a pass
 
-                if(teammate_close_enough_to_shoot):
-                    defend()
-                else :
-                    move_to_recieve()
-                    receive_pass()
-                state = 0
+                if(self.teammate_close_enough_to_shoot()):
+                    self.defend()
+                else:
+                    self.move_to_receive()
+                    self.receive_pass()
+                state = INITIAL_STATE
 
-            elif(state == 3):
+            elif(state == ENEMY_POSSESSION):
                 # This is the state we are in if an enemy robot has the ball
                 # If we are designated as the defender somehow, we should stay in the defense box
                 # Otherwise, we should move and try to intercept the ball from opponents' kicks
 
-                if(is_defender):
-                    defend()
+                if(self.is_defender()):
+                    self.defend()
                 else:
-                    intercept()
-                state = 0
+                    # between enemies to stop passing?...
+                    self.intercept()
+                state = INITIAL_STATE
 
-            elif(state == 4):
+            elif(state == BALL_FREE):
                 # This is the state we are in if no-one has the ball
                 # If we are the closest robot to the ball, then we should try and grab the ball quick;y
                 # Otherwise, we should go and try and defend the goal
 
-                if(closest_to_ball):
-                    get_ball()
+                if(self.closest_to_ball()):
+                    self.get_ball()
                 else:
-                    defend()
-                state = 0
-
+                    self.defend()
+                state = INITIAL_STATE
+            else:
+                print "Error State, this state should not be reached..."
+                state = INITIAL_STATE
 
     # x - forward distance
     # y - right distance
@@ -162,30 +181,16 @@ class Planner(object):
     # CORE functions
 
     def get_ball(self):
-        world = self.world()
-        if not world:
-            return
+        # self.clear_robot_responses()
 
-        self.clear_robot_responses()
         while True:
-            world = self.world()
-            
+            world = self.get_world_frame(us=True, ball=True)
+
+            v1 = world['ally'][self.us]["center"]  # our robot's coordinates
+            v2 = world["ball_center"]  # ball's coordinates
+            robot_dir_vector = world['ally'][self.us]["orientation"]
             command = ""
 
-            log.debug(">>>")
-            log.debug(world)
-
-
-            v1 =  world['ally'][self.us]["center"]      # our robot's coordinates
-            v2 =  world["ball_center"] # ball's coordinates
-            robot_dir_vector = world['ally'][self.us]["orientation"]
-
-            if v1 is None or v2 is None or robot_dir_vector is None:
-                continue
-            
-            print "v1 ", v1
-            print "v2 ", v2
-            print "dirv ", robot_dir_vector
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $ "
 
@@ -194,23 +199,23 @@ class Planner(object):
 
             if distance <= 80:
                 if distance < 30:
-#                    self.clear_robot_responses()
+                    # self.clear_robot_responses()
                     self.robot.compose("backward 10")
-#                    self.wait_for_robot_response()
+                    # self.wait_for_robot_response()
                     time.sleep(3)
-#                    self.clear_robot_responses()
+                    # self.clear_robot_responses()
                 break
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-#                self.clear_robot_responses()
+                # self.clear_robot_responses()
                 self.robot.compose(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 # self.wait_for_robot_response()
-#                self.wait_for_robot_response()
+                # self.wait_for_robot_response()
                 time.sleep(5)
-#                self.clear_robot_responses()
+                # self.clear_robot_responses()
 
                 # Alternative: sleep(5)
 
@@ -219,39 +224,34 @@ class Planner(object):
         command += "open_grabber $"
         command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
         command += "close_grabber"
-#        self.clear_robot_responses()
-#        self.robot.compose(command)
-#        self.wait_for_robot_response()
-#        self.clear_robot_responses()
+        # self.clear_robot_responses()
+        # self.robot.compose(command)
+        # self.wait_for_robot_response()
+        # self.clear_robot_responses()
         time.sleep(2)
-        
+
         self.robot.compose("read_infrared")
 
         if not self.ball_caught():
             print "Trying again"
-#            self.clear_robot_responses()
+            # self.clear_robot_responses()
             self.robot.compose("open_grabber")
             self.robot.compose("backward 20")
             self.robot.compose("stop")
-#            self.wait_for_robot_response()
+            # self.wait_for_robot_response()
             time.sleep(2)
-#            self.clear_robot_responses()
+            # self.clear_robot_responses()
             self.get_ball()
 
-
-
     def get_to(self, location):
-        world = self.world()
-        if not world:
-            return
 
-        self.clear_robot_responses()
+        # self.clear_robot_responses()
         while True:
-            world = self.world()
+            world = self.get_world_frame(us=True)
             command = ""
 
-            v1 =  world['ally'][self.us]["center"] # our robot's coordinates
-            v2 =  location
+            v1 = world['ally'][self.us]["center"]  # our robot's coordinates
+            v2 = location
             robot_dir_vector = world['ally'][self.us]["orientation"]
 
             if v1 is None or v2 is None or robot_dir_vector is None:
@@ -282,32 +282,26 @@ class Planner(object):
     # PART 1
     def receive_pass(self):
 
-        try:
-            v1 =  self.world()['ally'][self.us]["center"]      # our robot's coordinates
-            v2 =  self.world()["ball_center"] # ball's coordinates
-            robot_dir_vector = self.world()['ally'][self.us]["orientation"]
-
-
-            turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
-            command = self.turn_command(turn)
-
-            self.robot.compose(command)
-        except:
-            print("exception in receive pass")
-
+        world = self.get_world_frame(us=True, ball=True)
+        v1 = world['ally'][self.us]["center"]      # our robot's coordinates
+        v2 = world["ball_center"]  # ball's coordinates
+        robot_dir_vector = world['ally'][self.us]["orientation"]
+        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+        command = self.turn_command(turn)
+        self.robot.compose(command)
+        # HACK: sleep here
+        time.sleep(2)
         # !! maybe can wait a bit here
         self.get_ball()
-
 
     def test(self):
         self.get_ball()
 
         def turn_to_teammate():
             world = self.world()
-            v1 =  world['ally'][self.us]["center"]
-            v2 =  world['ally'][self.ally]["center"]
+            v1 = world['ally'][self.us]["center"]
+            v2 = world['ally'][self.ally]["center"]
             robot_dir_vector = world['ally'][self.us]["orientation"]
-
 
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
@@ -322,6 +316,7 @@ class Planner(object):
         turn_to_teammate()
 
         self.robot.compose("kick 100")
+
     # PART 2
     def receive_turn_pass(self):
 
@@ -329,7 +324,6 @@ class Planner(object):
         # v1 =  world['ally'][self.us]["center"]
         # v2 =  world["ball_center"]
         # robot_dir_vector = world['ally'][self.us]["orientation"]
-
 
         # turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
 
@@ -343,8 +337,8 @@ class Planner(object):
         def turn_to_teammate():
             while True:
                 world = self.world()
-                v1 =  world['ally'][self.us]["center"]
-                v2 =  world['ally'][self.ally]["center"]
+                v1 = world['ally'][self.us]["center"]
+                v2 = world['ally'][self.ally]["center"]
                 robot_dir_vector = world['ally'][self.us]["orientation"]
 
                 if v1 is not None and v2 is not None and robot_dir_vector is not None:
@@ -362,21 +356,14 @@ class Planner(object):
 
         self.robot.compose("kick 100")
 
-
     # PART 3
     def intercept(self):
         # (ball_coordinates, robot_coordinates, robot_dir_vector) = get_info(self.camera)
-        while True:
-            world = self.world()
-            robot_coordinates =  world['ally'][self.us]["center"]
-            green_opp = world['enemy']["green"]["center"]
-            pink_opp = world['enemy']["pink"]["center"]
-
-            ball_coordinates =  self.world()["ball_center"]
-
-            if robot_coordinates is not None and green_opp is not None and pink_opp is not None and ball_coordinates is not None:
-                break
-
+        world = self.get_world_frame(us=True, enemy=True, ball=True)
+        robot_coordinates = world['ally'][self.us]["center"]
+        green_opp = world['enemy']["green"]["center"]
+        pink_opp = world['enemy']["pink"]["center"]
+        ball_coordinates = world["ball_center"]
 
         # Choose the opponent which is not near the ball
         if self.dist(ball_coordinates, green_opp) > self.dist(ball_coordinates, pink_opp):
@@ -384,6 +371,7 @@ class Planner(object):
         else:
             other_bot = pink_opp
 
+        # move robot to further enemy from ball between both enemy robots.
         # Solving geometric problem with x,y axes for i_location
         # y = kx + m
 
@@ -395,96 +383,84 @@ class Planner(object):
 
         x = robot_coordinates[0]
         y = k*x+m
-        i_location = (x,y)
+        i_location = (x, y)
 
         self.get_to(i_location)
-
 
     def defend(self):
         # !! this is simplest possible strategy
         # !! can change to robot seeking ball within confined defence area
-        while True:
-            world = self.world()
-            robot_coordinates =  world['ally'][self.us]["center"]
-            green_opp = world['enemy']["green"]["center"]
-            pink_opp = world['enemy']["pink"]["center"]
+        world = self.get_world_frame(us=True, enemy=True)
+        robot_coordinates = world['ally'][self.us]["center"]
+        green_opp = world['enemy']["green"]["center"]
+        pink_opp = world['enemy']["pink"]["center"]
 
-            if robot_coordinates is not None and (green_opp is not None or pink_opp is not None):
-                break
-
+        # TODO: if defending breaks, this is probably the issue
+        # make it use the same frame for calculation.
+        ball_owner = self.who_has_ball()
         # !! Not sure if this works
-        if green_opp is not None:
+        if ball_owner == "green_opponent":
             enemy_bot = green_opp
         else:
             enemy_bot = pink_opp
+        # NOTE: we are currently not checking if no-one has the ball.
+        # if so, we assume it is the pink robot...
 
         # Solving geometric problem with x,y axes for i_location
         # y = kx + m
 
         # k = (y2-y1) / (x2 - x1)
-        k = (goal_center[1] - enemy_bot[1]) / (goal_center[0] - enemy_bot[0])
+        k = (self.goal_center[self.our_goal][1] - enemy_bot[1]) / (self.goal_center[self.our_goal][0] - enemy_bot[0])
 
         # m = y - kx
         m = enemy_bot[1] - k * enemy_bot[0]
 
         x = robot_coordinates[0]
         y = k*x+m
-        i_location = (x,y)
+        i_location = (x, y)
 
         self.get_to(i_location)
 
-
     def score(self):
-        # Should attempt to kick ball directly at the enemy goal
-        # This assumes the robot is already in a suitable position to score a goal
-        # Also assumes the robot currently has the ball in the kicker
+        """ aim towards enemy goal and kick """
 
-        # Need to get robot's current position and heading
-        # Also need goal location
-
-        while True:
-            world = self.world()
-            robot_coordinates =  world['ally'][self.us]["center"]
-            robot_dir_vector = world['ally'][self.us]["orientation"]
-            goal_location  = goal_centre[0]
-            #TODO make sure this is the right goal
-            if robot_coordinates is not None and (robot_dir_vector is not None) and (goal_location is not None):
-                break
+        world = self.get_world_frame(us=True, ally=True)
+        world = self.world()
+        robot_coordinates = world['ally'][self.us]["center"]
+        robot_dir_vector = world['ally'][self.us]["orientation"]
+        goal_location = self.goal_center[self.enemy_goal]
 
         # Firstly, turn to face goal
 
-        turn_angle = angle_a_to_b(robot_coordinates, goal_location,robot_dir_vector)
+        turn_angle = self.angle_a_to_b(robot_coordinates, goal_location, robot_dir_vector)
         command = ""
         command += self.turn_command(turn_angle) + "$ stop $"
 
         # next, kick at goal
-        command += "kick 100 $"
+        command += "kick 100"
 
         self.robot.compose(command)
-        self.wait_for_robot_response()
-        self.clear_robot_responses()
-
+        time.sleep(2)
+        # self.wait_for_robot_response()
+        # self.clear_robot_responses()
 
     def pass_to_teammate(self):
 
-        while True:
-            world = self.world()
-            v1 =  world['ally'][self.us]["center"]
-            v2 =  world['ally'][self.ally]["center"]
-            robot_dir_vector = world['ally'][self.us]["orientation"]
-            if v1 is not None and v2 is not None and robot_dir_vector is not None:
-                break
+        world = self.get_world_frame(us=True, ally=True)
+        v1 = world['ally'][self.us]["center"]
+        v2 = world['ally'][self.ally]["center"]
+        robot_dir_vector = world['ally'][self.us]["orientation"]
 
-        turn_angle = angle_a_to_b(v1,v2, robot_dir_vector)
+        turn_angle = self.angle_a_to_b(v1, v2, robot_dir_vector)
         command = ""
         command += self.turn_command(turn_angle) + "$ stop $"
 
-        command += "kick 100 $"
+        command += "kick 100"
 
         self.robot.compose(command)
-        self.wait_for_robot_response()
-        self.clear_robot_responses()
-
+        # self.wait_for_robot_response()
+        # self.clear_robot_responses()
+        time.sleep(2)
 
     # AUXILIARY functions
     def angle_between(self, p1, p2):
@@ -512,8 +488,8 @@ class Planner(object):
             response = self.robot.queue.get()
             if response == 'y':
                 print "BALL CAUGHT"
-            
-            if response in ['y','n']:
+
+            if response in ['y', 'n']:
                 return response == 'y'
             x = self.millis(start_time_1)
             if(x > 800):
@@ -536,7 +512,6 @@ class Planner(object):
             if(x > 800):
                 break
 
-
     def clear_robot_responses(self):
         # Empty response queue
         while(not self.robot.queue.empty()):
@@ -558,77 +533,112 @@ class Planner(object):
 
         return command
 
-    #TODO - implement these functions
-
-
     def is_defender(self):
-        # TODO - function should check to see if we are the defender on our team, e.g. by seeing if we are in the defense box
-        pass
+        # TODO - function should check to see if we are the defender on
+        # our team,
+        # e.g. by seeing if we are in the defense box
+        world = self.get_world_frame(us=True, ally=True)
+
+        us = world["ally"][self.us]["center"]
+        ally = world["ally"][self.ally]["center"]
+        # TODO: fix this crap
+        our_goal = self.goal_center[self.our_goal]
+
+        # get our distance
+        our_dist = self.dist(us, our_goal)
+        # get ally distance
+        ally_dist = self.dist(ally, our_goal)
+
+        return our_dist < ally_dist
 
     def close_enough_to_shoot(self):
-        # function should determine if the robot is close enough to the enemy goal to shoot, or if it should attempt a pass
+        # function should determine if the robot is
+        # close enough to the enemy goal to shoot,
+        # or if it should attempt a pass
         # maybe also need a similar one for the teammate
 
-        while True:
-            world = self.world()
-            v1 =  world['ally'][self.us]["center"]
-            goal_location  = goal_centre[0]
-            #TODO make sure this is the right goal
-            if v1 is not None and goal_location is not None:
-                break
+        world = self.get_world_frame(us=True)
+        v1 = world["ally"][self.us]["center"]
+        # TODO: make sure this is the right goal
+        goal_location = self.goal_center[self.enemy_goal]
 
-        xdiff = goal_location[0] - v1[0]
-        ydiff = goal_location[1] - v1[1]
+        dist = self.dist(v1, goal_location)
 
-        diff = sqrt(xdiff **2 + ydiff ** 2)
-
-        if (diff < 80):
+        # TODO Fix threshold value
+        if (dist < 400):
             return True
         else:
             return False
-        #TODO Fix threshold value
 
     def teammate_close_enough_to_shoot(self):
         # see above
 
-        while True:
-            world = self.world()
-            v1 =  world['ally'][self.ally]["center"]
-            goal_location  = goal_centre[0]
-            #TODO make sure this is the right goal
-            robot_dir_vector = world['ally'][self.us]["orientation"]
-            if v1 is not None and goal_location is not None:
-                break
+        world = self.get_world_frame(ally=True)
+        v1 = world['ally'][self.ally]["center"]
+        # TODO make sure this is the right goal
+        goal_location = self.goal_center[self.enemy_goal]
 
         xdiff = goal_location[0] - v1[0]
         ydiff = goal_location[1] - v1[1]
 
-        diff = sqrt(xdiff **2 + ydiff ** 2)
+        diff = math.sqrt(xdiff**2 + ydiff**2)
 
+        # TODO Fix threshold value
         if (diff < 80):
             return True
         else:
             return False
-        #TODO Fix threshold value
 
-    def closest_to_ball(self):
-        # function should tell us which robot is the closest to the ball on the pitch
-
+    def get_world_frame(self,
+                        ally=False,
+                        us=False,
+                        enemy_pink=False,
+                        enemy_green=False,
+                        ball=False,
+                        enemy=False):
         while True:
             world = self.world()
-            v1 =  world['ally'][self.us]["center"]
-            v2 =  world['ally'][self.ally]["center"]
-            green_opp = world['enemy']["green"]["center"]
-            pink_opp = world['enemy']["pink"]["center"]
-            ball_coordinates =  self.world()["ball_center"]
+            if ally and not world['ally'][self.us]["center"]:
+                log.debug("We are not here not found")
+                continue
+            if us and not world['ally'][self.us]["center"]:
+                log.debug("Ally not found")
+                continue
+            if enemy_pink and not world['enemy']["pink"]["center"]:
+                log.debug("Enemy pink not found")
+                continue
+            if enemy_green and not world['enemy']["green"]["center"]:
+                log.debug("Enemy green not found")
+                continue
+            if ball and not world["ball_center"]:
+                log.debug("ball not found")
+                continue
+            cond = (world['enemy']['green']['center'] or world['enemy']['pink']['center'])
+            if enemy and not cond:
+                log.debug("enemies not found (both)")
+                continue
 
-            if v1 is not None and v2 is not None and green_opp is not None and pink_opp is not None:
-                break
+            return world
 
-        v1b = dist(v1, ball_coordinates)
-        v2b = dist(v2, ball_coordinates)
-        gb = dist(green_opp, ball_coordinates)
-        pb = dist(pink_opp, ball_coordinates)
+    def closest_to_ball(self):
+        # function should tell us which robot is
+        # the closest to the ball on the pitch
+
+        world = self.get_world_frame(ally=True,
+                                     us=True,
+                                     enemy_pink=True,
+                                     enemy_green=True,
+                                     ball=True)
+        v1 = world['ally'][self.us]["center"]
+        v2 = world['ally'][self.ally]["center"]
+        green_opp = world['enemy']["green"]["center"]
+        pink_opp = world['enemy']["pink"]["center"]
+        ball_coordinates = world["ball_center"]
+
+        v1b = self.dist(v1, ball_coordinates)
+        v2b = self.dist(v2, ball_coordinates)
+        gb = self.dist(green_opp, ball_coordinates)
+        pb = self.dist(pink_opp, ball_coordinates)
 
         dists = [v1b, v2b, gb, pb]
         robots = ["us", "ally", "green_opponent", "pink_opponent"]
@@ -639,19 +649,41 @@ class Planner(object):
 
         return[robot, dist]
 
-    def move_to_recieve(self):
-        # TODO - Function should allow us to move to a better position to receive a pass
-        pass
+    def move_to_receive(self):
+        """
+        Move to middle of pitch (on x-axis),
+        while optimising distance from both opposing robots.
+        """
+        # TODO - Function should allow us to move to a
+        # better position to receive a pass
+        world = self.get_world_frame(enemy=True)
+        green = world['enemy']['green']['center']
+        pink = world['enemy']['pink']['center']
+        max_y = max(green[1], pink[1])
+        min_y = min(green[1], pink[1])
+
+        offset = 100
+        if abs(max_y + offset) < abs(min_y + offset):
+            chosen_y = max_y + offset
+        else:
+            chosen_y = min_y - offset
+
+        if chosen_y > 200 or chosen_y < -200:
+            chosen_y = 0
+
+        self.get_to((50, chosen_y))
 
     def who_has_ball(self):
         # TODO - Should return who has the ball currently.
-        # Should work by calling closest_to_ball, and then if the difference between that robot and the ball is small enough,
+        # Should work by calling closest_to_ball,
+        # and then if the difference between that robot and the
+        # ball is small enough,
         # then it is determined to 'have' the ball
 
-        [robot, dist] = closest_to_ball()
+        [robot, dist] = self.closest_to_ball()
 
-        if dist < 15:
-            #TODO check threshold value
+        # TODO check threshold value
+        if dist < 50:
             return robot
         else:
             return "no-one"
