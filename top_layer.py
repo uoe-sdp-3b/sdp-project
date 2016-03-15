@@ -60,7 +60,7 @@ def planner():
         pl = Planner(world,
                      args.color,
                      args.direction,
-                     robot=robot,
+                     robot,
                      debug=args.verbose)
         time.sleep(1)  # working for 3 seconds#
 

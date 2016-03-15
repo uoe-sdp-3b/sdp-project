@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 class Planner(object):
 
-    def __init__(self, world_api, our_color, robot, our_goal, debug=False):
+    def __init__(self, world_api, our_color, our_goal, robot, debug=False):
         if debug:
             log.setLevel(logging.DEBUG)
 
@@ -437,9 +437,14 @@ class Planner(object):
 
     # AUXILIARY functions
     def angle_between(self, p1, p2):
-        ang1 = math.atan2(*p1[::-1])
-        ang2 = math.atan2(*p2[::-1])
-        return math.degrees((ang1 - ang2))
+        try:
+            ang1 = math.atan2(*p1[::-1])
+            ang2 = math.atan2(*p2[::-1])
+            return math.degrees((ang1 - ang2))
+        except:
+            log.error('failure with angle_between')
+            log.error(p1, p2)
+            return 0
 
     def angle_a_to_b(self, r, b, dirv):
         if type(dirv[1]) == list:
@@ -473,6 +478,7 @@ class Planner(object):
         """
         Sends command and blocks until ack
         """
+        print cmd
         self.clear_robot_responses()
         commands = cmd.strip().split("$")
         if commands[-1].strip() == "":
@@ -492,6 +498,7 @@ class Planner(object):
                 last_ack = response[1]
 
         self.clear_robot_responses()
+        print "ending command"
 
     def wait_for_robot_response(self):
         start_time_1 = time.time()
