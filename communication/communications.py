@@ -309,10 +309,10 @@ class RobotComms(CommsToArduino):
     def w(self):
         self.forward(25)
 
-    def a(self):
-        self.left(35)
-    def d(self):
-        self.right(35)
+    def a(self, amount=35):
+        self.left(amount)
+    def d(self, amount=35):
+        self.right(amount)
 
 
     def s(self):
