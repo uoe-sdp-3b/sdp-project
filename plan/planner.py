@@ -186,7 +186,7 @@ class Planner(object):
         while True:
             world = self.get_world_frame(us=True, ball=True)
             print "frame received"
-            print world
+            #print world
             v1 = world['ally'][self.us]["center"]  # our robot's coordinates
             v2 = world["ball_center"]  # ball's coordinates
             robot_dir_vector = world['ally'][self.us]["orientation"]
@@ -204,9 +204,9 @@ class Planner(object):
                 #     self.send_and_ack("backward 10")
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-                self.robot.compose(command)
-                time.sleep(4)
-                # self.send_and_ack(command)
+                #self.robot.compose(command)
+                #time.sleep(4)
+                self.send_and_ack(command)
 
         command = ""
         command += self.turn_command(turn) + " $ stop $"
@@ -214,17 +214,18 @@ class Planner(object):
         command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
         command += "close_grabber"
 
-        self.robot.compose(command)
-        time.sleep(4)
-        # self.send_and_ack(command)
+        #self.robot.compose(command)
+        #time.sleep(4)
+        self.send_and_ack(command)
 
         self.robot.compose("read_infrared")
 
         if not self.ball_caught():
             print "Trying again"
             tmp_command = "open_grabber $ backward 20 $ stop"
-            self.robot.compose(tmp_command)
-            # self.send_and_ack(tmp_command)
+            #self.robot.compose(tmp_command)
+            #time.sleep(2)
+            self.send_and_ack(tmp_command)
             self.get_ball()
 
     def get_to(self, location):
