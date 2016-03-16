@@ -174,6 +174,7 @@ class Planner(object):
         else:
             command += "left " + str(360 - angle_remaining)
 
+        self.send_and_ack(command)
         # self.compose(command)
 
     # MILESTONE 3 planning tasks
@@ -250,17 +251,18 @@ class Planner(object):
                 break
             else:
                 command += "forward " + str(int(0.30 * distance))  # * 0.8
-                self.robot.compose(command)
+                self.send_and_ack(command)
 
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
-                time.sleep(4)
+                # time.sleep(4)
                 self.clear_robot_responses()
 
-        self.robot.compose(command)
+        self.send_and_ack(command)
+        # self.robot.compose(command)
 
-        self.wait_for_robot_response()
-        self.clear_robot_responses()
+        # self.wait_for_robot_response()
+        # self.clear_robot_responses()
 
     # PART 1
     def receive_pass(self):
@@ -271,9 +273,10 @@ class Planner(object):
         robot_dir_vector = world['ally'][self.us]["orientation"]
         turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
         command = self.turn_command(turn)
-        self.robot.compose(command)
+        #self.robot.compose(command)
+        self.send_and_ack(command)
         # HACK: sleep here
-        time.sleep(2)
+        #time.sleep(2)
         # !! maybe can wait a bit here
         self.get_ball()
 
@@ -293,12 +296,12 @@ class Planner(object):
             command = ""
             command += self.turn_command(turn) + " $ "
             command += self.turn_command("stop")
-            self.robot.compose(command)
+            self.send_and_ack(command)
 
         turn_to_teammate()
         turn_to_teammate()
 
-        self.robot.compose("kick 100")
+        self.send_and_ack(command)
 
     # PART 2
     def receive_turn_pass(self):
@@ -333,11 +336,11 @@ class Planner(object):
 
             command = ""
             command += self.turn_command(turn) + " $ stop $"
-            self.robot.compose(command)
+            self.send_and_ack(command)
 
         turn_to_teammate()
 
-        self.robot.compose("kick 100")
+        self.send_and_ack("kick 100")
 
     # PART 3
     def intercept(self):
@@ -422,8 +425,8 @@ class Planner(object):
         # next, kick at goal
         command += "kick 100"
 
-        self.robot.compose(command)
-        time.sleep(2)
+        self.send_and_ack(command)
+        # time.sleep(2)
         # self.wait_for_robot_response()
         # self.clear_robot_responses()
 
@@ -440,10 +443,10 @@ class Planner(object):
 
         command += "kick 100"
 
-        self.robot.compose(command)
+        self.send_and_ack(command)
         # self.wait_for_robot_response()
         # self.clear_robot_responses()
-        time.sleep(2)
+        # time.sleep(2)
 
     # AUXILIARY functions
     def angle_between(self, p1, p2):
@@ -502,9 +505,9 @@ class Planner(object):
             while(self.robot.queue.empty()):
                 print "waiting..."
             response = self.robot.queue.get()
-            
+
             print response
-            
+
             if len(response) == 3 and response[1] in ["0", "1"] and response[2] == "1" and response != last_ack:
                 no_acks += 1
                 last_ack = response[1]
