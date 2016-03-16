@@ -306,6 +306,29 @@ class RobotComms(CommsToArduino):
             except TypeError as e:
                 self.queue.put(str(e))
 
+    def w(self):
+        self.forward(25)
+
+    def a(self):
+        self.left(35)
+    def d(self):
+        self.right(35)
+
+
+    def s(self):
+        self.backward(25)
+    def f(self):
+        self.stop()
+    def o(self):
+        self.open_grabber()
+    def c(self):
+        self.close_grabber()
+
+    def k(self, power):
+        self.kick(int(power)*10)
+
+
+
 
 
 if __name__ == "__main__":
