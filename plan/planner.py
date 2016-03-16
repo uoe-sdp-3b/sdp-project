@@ -71,7 +71,7 @@ class Planner(object):
         state = 0
 
         while(True):
-
+            print "STATE: ", state
             if(state == INITIAL_STATE):
                 # Firstly, we need to find out who has the ball / where it is
 
@@ -185,7 +185,8 @@ class Planner(object):
 
         while True:
             world = self.get_world_frame(us=True, ball=True)
-
+            print "frame received"
+            print world
             v1 = world['ally'][self.us]["center"]  # our robot's coordinates
             v2 = world["ball_center"]  # ball's coordinates
             robot_dir_vector = world['ally'][self.us]["orientation"]
@@ -203,7 +204,9 @@ class Planner(object):
                 #     self.send_and_ack("backward 10")
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-                self.send_and_ack(command)
+                self.robot.compose(command)
+                time.sleep(4)
+                # self.send_and_ack(command)
 
         command = ""
         command += self.turn_command(turn) + " $ stop $"
@@ -211,11 +214,17 @@ class Planner(object):
         command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
         command += "close_grabber"
 
+        self.robot.compose(command)
+        time.sleep(4)
+        # self.send_and_ack(command)
+
         self.robot.compose("read_infrared")
 
         if not self.ball_caught():
             print "Trying again"
-            self.send_and_ack("open_grabber $ backward 20 $ stop")
+            tmp_command = "open_grabber $ backward 20 $ stop"
+            self.robot.compose(tmp_command)
+            # self.send_and_ack(tmp_command)
             self.get_ball()
 
     def get_to(self, location):
@@ -443,7 +452,7 @@ class Planner(object):
             return math.degrees((ang1 - ang2))
         except:
             log.error('failure with angle_between')
-            log.error(p1, p2)
+            print p1, p2
             return 0
 
     def angle_a_to_b(self, r, b, dirv):
@@ -490,9 +499,9 @@ class Planner(object):
         no_acks = 0
         while no_acks < len(commands):
             while(self.robot.queue.empty()):
-                pass
+                print "waiting..."
             response = self.robot.queue.get()
-
+            print response
             if len(response) == 3 and response[1] in ["0", "1"] and response != last_ack:
                 no_acks += 1
                 last_ack = response[1]
