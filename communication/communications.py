@@ -306,19 +306,21 @@ class RobotComms(CommsToArduino):
             except TypeError as e:
                 self.queue.put(str(e))
 
-    def w(self):
-        self.forward(25)
+    def w(self, amount=25):
+        self.forward(amount)
 
     def a(self, amount=35):
         self.left(amount)
+
     def d(self, amount=35):
         self.right(amount)
 
+    def s(self, amount=25):
+        self.backward(amount)
 
-    def s(self):
-        self.backward(25)
     def f(self):
         self.stop()
+
     def o(self):
         self.open_grabber()
     def c(self):
