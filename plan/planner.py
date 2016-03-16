@@ -501,8 +501,10 @@ class Planner(object):
             while(self.robot.queue.empty()):
                 print "waiting..."
             response = self.robot.queue.get()
+            
             print response
-            if len(response) == 3 and response[1] in ["0", "1"] and response != last_ack:
+            
+            if len(response) == 3 and response[1] in ["0", "1"] and response[2] == "1" and response != last_ack:
                 no_acks += 1
                 last_ack = response[1]
 
