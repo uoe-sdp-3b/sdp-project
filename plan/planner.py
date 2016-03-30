@@ -436,7 +436,7 @@ class Planner(object):
             sign = 1
 
         defence_location = ( (sign * (abs(goal_location[0]) - 20)), goal_location[1] )
-        get_to(defence_location)
+        self.get_to(defence_location)
 
         world = self.get_world_frame(us=True, enemy=True)
         robot_coordinates = world['ally'][self.us]["center"]
