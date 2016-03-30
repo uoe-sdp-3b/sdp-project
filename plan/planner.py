@@ -276,8 +276,10 @@ class Planner(object):
         # time.sleep(4)
         self.clear_robot_responses()
 
-        return
-        print("YOU DONT KNOW HOW TO PYTHON")
+        # !! Hamish had made this return early?
+        #return
+        #print("YOU DONT KNOW HOW TO PYTHON")
+
         # do not run
         while True:
             world = self.get_world_frame(us=True)
