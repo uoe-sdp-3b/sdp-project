@@ -60,6 +60,11 @@ class Planner(object):
         """
         self.world_api.close()
 
+    def initial(self):
+        self.robot.compose("stop")
+        command = "scale_left 100 $ scale_right 98"
+        self.robot.compose(command)
+
     def strategy(self):
         # This should be the overall wrapper / strategy
         INITIAL_STATE = 0
@@ -76,18 +81,23 @@ class Planner(object):
                 # Firstly, we need to find out who has the ball / where it is
 
                 who = self.who_has_ball()
+                print(who)
 
                 if(self.ball_caught()):
                     # If we have the ball
+                    print "we have ball"
                     state = OUR_POSSESSION
                 elif who == "ally":
+                    print "Ally has ball"
                     # If our teammate has the ball
                     state = ALLY_POSSESSION
                 elif (who == "pink_opponent" or who == "green_opponent"):
+                    print "Ennemy has ball"
                     # If an enemy has the ball
                     state = ENEMY_POSSESSION
                 else:
                     # If the ball is free on the pitch
+                    print("Ball is free")
                     state = BALL_FREE
 
             elif(state == OUR_POSSESSION):
@@ -130,8 +140,11 @@ class Planner(object):
                 # Otherwise, we should go and try and defend the goal
 
                 if(self.closest_to_ball()):
+                    print("getting ball")
+
                     self.get_ball()
                 else:
+                    print("defending")
                     self.defend()
                 state = INITIAL_STATE
             else:
@@ -192,14 +205,18 @@ class Planner(object):
             v2 = world["ball_center"]  # ball's coordinates
             robot_dir_vector = world['ally'][self.us]["orientation"]
             command = ""
-
             turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
             command += self.turn_command(turn) + " $ stop $ "
 
             distance = self.dist(v1, v2)
-            print(distance)
+            # if distance > 120:
+            #    print("getting to")
+            #    self.get_to(v2)
+            #    print("getting done")
 
-            if distance <= 80:
+            #    return
+
+            if distance <= 120:
                 break
                 # if distance < 30:
                 #     self.send_and_ack("backward 10")
@@ -209,11 +226,22 @@ class Planner(object):
                 #time.sleep(4)
                 self.send_and_ack(command)
 
+        world = self.get_world_frame(us=True, ball=True)
+        #print world
+        v1 = world['ally'][self.us]["center"]  # our robot's coordinates
+        v2 = world["ball_center"]  # ball's coordinates
+        distance = self.dist(v1, v2)
+        robot_dir_vector = world['ally'][self.us]["orientation"]
         command = ""
-        command += self.turn_command(turn) + " $ stop $"
+        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+        command += self.turn_command(int(turn * 0.8)) + " $ stop $ "
+
         command += "open_grabber $"
-        command += "forward " + str(int(0.58 * math.ceil(distance))) + " $"
+        command += "scale_left 85 $ scale_right 85 $"
+        command += "forward " + str(int(0.35 * math.ceil(distance))) + " $"
+        command += "scale_left 100 $ scale_right 98 $"
         command += "close_grabber"
+
 
         #self.robot.compose(command)
         #time.sleep(4)
@@ -223,14 +251,34 @@ class Planner(object):
 
         if not self.ball_caught():
             print "Trying again"
-            tmp_command = "open_grabber $ backward 20 $ stop"
+            tmp_command = "open_grabber $ backward 10 $ close_grabber"
             #self.robot.compose(tmp_command)
             #time.sleep(2)
             self.send_and_ack(tmp_command)
-            self.get_ball()
+            # self.get_ball()
 
     def get_to(self, location):
+        print("starting get_to")
+        world = self.get_world_frame(us=True)
+        command = ""
 
+        v1 = world['ally'][self.us]["center"]  # our robot's coordinates
+        v2 = location
+        robot_dir_vector = world['ally'][self.us]["orientation"]
+        turn = self.angle_a_to_b(v1, v2, robot_dir_vector)
+        command += self.turn_command(turn) + " $ stop $"
+
+        distance = self.dist(v1, v2)
+        command += "forward " + str(int(0.30 * distance))  # * 0.8
+        self.send_and_ack(command)
+        # !! Can be written differently if can interrupt robot's previous command
+        # !! Can check for response == success
+        # time.sleep(4)
+        self.clear_robot_responses()
+
+        return
+        print("YOU DONT KNOW HOW TO PYTHON")
+        # do not run
         while True:
             world = self.get_world_frame(us=True)
             command = ""
@@ -252,7 +300,7 @@ class Planner(object):
             else:
                 command += "forward " + str(int(0.30 * distance))  # * 0.8
                 self.send_and_ack(command)
-
+                break
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 # time.sleep(4)
@@ -362,7 +410,7 @@ class Planner(object):
         # y = kx + m
 
         # k = (y2-y1) / (x2 - x1)
-        k = (ball_coordinates[1] - other_bot[1]) / (ball_coordinates[0] - other_bot[0])
+        k = (ball_coordinates[1] - other_bot[1]) / max((ball_coordinates[0] - other_bot[0]),1)
 
         # m = y - kx
         m = other_bot[1] - k * other_bot[0]
@@ -375,7 +423,19 @@ class Planner(object):
 
     def defend(self):
         # !! this is simplest possible strategy
-        # !! can change to robot seeking ball within confined defence area
+        # !! can change to robot seeking ball within confined defence ar
+
+        # This top block makes sure our robot is near to goal
+        goal_location = self.goal_center[self.our_goal]
+
+        if goal_location[0] < 0:
+            sign = -1
+        else:
+            sign = 1
+
+        defence_location = ( (sign * (abs(goal_location[0]) - 20)), goal_location[1] )
+        get_to(defence_location)
+
         world = self.get_world_frame(us=True, enemy=True)
         robot_coordinates = world['ally'][self.us]["center"]
         green_opp = world['enemy']["green"]["center"]
@@ -396,7 +456,7 @@ class Planner(object):
         # y = kx + m
 
         # k = (y2-y1) / (x2 - x1)
-        k = (self.goal_center[self.our_goal][1] - enemy_bot[1]) / (self.goal_center[self.our_goal][0] - enemy_bot[0])
+        k = (self.goal_center[self.our_goal][1] - enemy_bot[1]) / max((self.goal_center[self.our_goal][0] - enemy_bot[0]),1)
 
         # m = y - kx
         m = enemy_bot[1] - k * enemy_bot[0]
@@ -472,15 +532,16 @@ class Planner(object):
         return math.hypot(v1[0] - v2[0], v1[1] - v2[1])
 
     def ball_caught(self):
-        while True:
-            while(self.robot.queue.empty()):
-                pass
-            response = self.robot.queue.get()
-            if response == 'y':
-                print "BALL CAUGHT"
+        self.robot.compose("read_infrared")
+        while(self.robot.queue.empty()):
+            # self.robot.compose("read_infrared")
+            pass
+        response = self.robot.queue.get()
+        if response == 'y':
+            print "BALL CAUGHT. BITCH."
 
-            if response in ['y', 'n']:
-                return response == 'y'
+
+            return response == 'y'
 
     def millis(self, start_time):
         st = int(round(start_time * 1000))
@@ -503,7 +564,8 @@ class Planner(object):
         no_acks = 0
         while no_acks < len(commands):
             while(self.robot.queue.empty()):
-                print "waiting..."
+                pass
+                # print "waiting..."
             response = self.robot.queue.get()
 
             print response
@@ -524,7 +586,7 @@ class Planner(object):
             if response[2] == '1':
                 break
             x = self.millis(start_time_1)
-            if(x > 800):
+            if(x > 1500):
                 break
 
     def clear_robot_responses(self):
@@ -580,7 +642,7 @@ class Planner(object):
         dist = self.dist(v1, goal_location)
 
         # TODO Fix threshold value
-        if (dist < 400):
+        if (dist < 4000):
             return True
         else:
             return False

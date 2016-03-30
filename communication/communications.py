@@ -90,7 +90,7 @@ class CommsToArduino(object):
         """
         Sends the code to the Arduino
         """
-        checksum = self.create_checksum(arg, opcode)    
+        checksum = self.create_checksum(arg, opcode)
         opcode_string = "%02d%03d%d%d\r" % (opcode, arg, checksum, self.seqNo)
         # Ensure that internal queue is clear initially
         self.internal_queue.queue.clear()
@@ -208,7 +208,7 @@ class RobotComms(CommsToArduino):
                 break
             # Sleep needed to not just put single letters into queue
             sleep(0.2)
-            if self.comn and self.comn.is_open:
+            if self.comn and self.comn.isOpen():
                 line = self.comn.readline().strip()
                 if line != "":
                     self.queue.put(line)
