@@ -209,6 +209,7 @@ class Planner(object):
             command += self.turn_command(turn) + " $ stop $ "
 
             distance = self.dist(v1, v2)
+            #print "distance: " + str(distance)
             # if distance > 120:
             #    print("getting to")
             #    self.get_to(v2)
@@ -216,14 +217,12 @@ class Planner(object):
 
             #    return
 
-            if distance <= 120:
+            if distance <= 80:
                 break
                 # if distance < 30:
                 #     self.send_and_ack("backward 10")
             else:
                 command += " forward " + str(int(0.25 * distance))  # * 0.8
-                #self.robot.compose(command)
-                #time.sleep(4)
                 self.send_and_ack(command)
 
         world = self.get_world_frame(us=True, ball=True)
@@ -246,9 +245,6 @@ class Planner(object):
         #self.robot.compose(command)
         #time.sleep(4)
         self.send_and_ack(command)
-
-        self.robot.compose("read_infrared")
-
         if not self.ball_caught():
             print "Trying again"
             tmp_command = "open_grabber $ backward 10 $ close_grabber"
@@ -302,11 +298,12 @@ class Planner(object):
             else:
                 command += "forward " + str(int(0.30 * distance))  # * 0.8
                 self.send_and_ack(command)
-                break
                 # !! Can be written differently if can interrupt robot's previous command
                 # !! Can check for response == success
                 # time.sleep(4)
                 self.clear_robot_responses()
+                break
+
 
         self.send_and_ack(command)
         # self.robot.compose(command)
@@ -476,21 +473,21 @@ class Planner(object):
         world = self.world()
         robot_coordinates = world['ally'][self.us]["center"]
         robot_dir_vector = world['ally'][self.us]["orientation"]
+        print robot_dir_vector
         goal_location = self.goal_center[self.enemy_goal]
 
         # Firstly, turn to face goal
 
         turn_angle = self.angle_a_to_b(robot_coordinates, goal_location, robot_dir_vector)
+        print turn_angle
         command = ""
         command += self.turn_command(turn_angle) + "$ stop $"
 
         # next, kick at goal
         command += "kick 100"
-
+        print command
         self.send_and_ack(command)
-        # time.sleep(2)
-        # self.wait_for_robot_response()
-        # self.clear_robot_responses()
+
 
     def pass_to_teammate(self):
 
@@ -560,23 +557,35 @@ class Planner(object):
         if commands[-1].strip() == "":
             commands.pop()
 
-        self.robot.compose(cmd)
+    #    for c in commands:
+    #        print c
+    #        self.robot.compose(c)
+    #        while(not self.robot.queue.qsize() == 2):
+    #            pass
+    #        self.clear_robot_responses()
 
+    #    return
+        self.robot.compose(cmd)
         last_ack = -1
         no_acks = 0
+        print len(commands)
         while no_acks < len(commands):
+            print no_acks
             while(self.robot.queue.empty()):
                 pass
-                # print "waiting..."
+                #print "waiting..."
             response = self.robot.queue.get()
 
             print response
 
-            if len(response) == 3 and response[1] in ["0", "1"] and response[2] == "1" and response != last_ack:
+            if len(response) == 3 and responce[0] != "1" and response[1] in ["0", "1"] and response[2] == "1" : # and responce == last_ack
                 no_acks += 1
                 last_ack = response[1]
 
-        self.clear_robot_responses()
+
+            self.robot.queue.task_done()
+
+
         print "ending command"
 
     def wait_for_robot_response(self):
@@ -586,6 +595,7 @@ class Planner(object):
                 pass
             response = self.robot.queue.get()
             if response[2] == '1':
+                self.clear_robot_responses()
                 break
             x = self.millis(start_time_1)
             if(x > 1500):

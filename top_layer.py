@@ -63,17 +63,16 @@ def planner():
                      robot,
                      debug=args.verbose)
         time.sleep(1)  # working for 3 seconds#
-        print("test")
+        #print("test")
 
 
         # PART 1
         # pl.receive_pass()
-        while True:
-            pl.initial()
-            pl.strategy()
-            # pl.get_ball()
-            # print "trying to Kick ball now"
-            # pl.score()
+        pl.initial()
+        #pl.strategy()
+        pl.get_ball()
+        # print "trying to Kick ball now"
+        #pl.score()
 
         # PART 2
         # pl.receive_turn_pass()
