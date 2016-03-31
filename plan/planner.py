@@ -236,7 +236,7 @@ class Planner(object):
         command += self.turn_command(int(turn * 0.8)) + " $ stop $ "
 
         command += "open_grabber $"
-        command += "scale_left 85 $ scale_right 85 $"
+        command += "scale_left 90 $ scale_right 90 $"
         command += "forward " + str(int(0.35 * math.ceil(distance))) + " $"
         command += "scale_left 100 $ scale_right 98 $"
         command += "close_grabber"
@@ -570,15 +570,15 @@ class Planner(object):
         no_acks = 0
         print len(commands)
         while no_acks < len(commands):
-            print no_acks
             while(self.robot.queue.empty()):
                 pass
                 #print "waiting..."
             response = self.robot.queue.get()
 
-            print response
 
-            if len(response) == 3 and responce[0] != "!" and response[1] in ["0", "1"] and response[2] == "1" : # and responce == last_ack
+            if len(response) == 3 and response[0] != "!" and response[1] in ["0", "1"] and response[2] == "1" and response[1] != last_ack:
+                print response
+
                 no_acks += 1
                 last_ack = response[1]
 

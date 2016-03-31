@@ -63,11 +63,14 @@ class CommsToArduino(object):
     # and updates the boolean variable isConnected
     def connect(self):
         if self.isConnected is False and self.comn is None:
+            print("test")
             try:
+                print("test")
                 self.comn = Serial(port=self.port,
                                    baudrate=self.rate,
                                    timeout=self.timeout)
                 self.isConnected = True
+                print(str(self.port) + " " + str(self.rate) + " " + str(self.timeout) + "\n")
             except OSError as ex:
                 print("Cannot connect to Arduino.")
                 print(ex.strerror)
