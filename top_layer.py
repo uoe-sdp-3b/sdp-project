@@ -65,17 +65,18 @@ def planner():
         time.sleep(1)  # working for 3 seconds#
         #print("test")
 
-
         # PART 1
         # pl.receive_pass()
         pl.initial()
         #pl.strategy()
-        pl.get_ball()
-        # print "trying to Kick ball now"
-        #pl.score()
 
         # PART 2
         # pl.receive_turn_pass()
+        while True:
+            while not pl.get_ball():
+                pass
+            print("OMG IT ACTUALLY HAPPENED")
+            pl.score()
 
         # PART 3
         # pl.intercept()

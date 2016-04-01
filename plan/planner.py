@@ -251,7 +251,10 @@ class Planner(object):
             #self.robot.compose(tmp_command)
             #time.sleep(2)
             self.send_and_ack(tmp_command)
+            return False
             # self.get_ball()
+        else:
+            return True
 
     def get_to(self, location):
         print("starting get_to")
